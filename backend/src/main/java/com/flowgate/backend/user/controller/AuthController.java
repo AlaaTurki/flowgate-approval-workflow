@@ -32,14 +32,11 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@Validated @RequestBody LoginRequest req) {
-        return userService.findByUsername(req.getUsername())
-                .map(userDto -> {
-                    // This is a simple stub: confirm password and return a placeholder token.
-                    // In Phase 3 we'll replace with full JWT issuance.
-                    // Need to fetch the entity to check password; for now the service only returns DTO.
-                    // So return a placeholder if user exists.
-                    return ResponseEntity.ok(new AuthResponse("token-placeholder"));
-                })
-                .orElseGet(() -> ResponseEntity.status(401).body("Invalid credentials"));
+        var userOpt = userService.findByUsername(req.getUsername());
+        if (userOpt.isPresent()) {
+            // Simple stub: password check and JWT will be implemented in Phase 3.
+            return ResponseEntity.ok(new AuthResponse("token-placeholder", "Bearer"));
+        }
+        return ResponseEntity.status(401).body("Invalid credentials");
     }
 }
