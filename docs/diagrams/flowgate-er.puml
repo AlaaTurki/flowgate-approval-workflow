@@ -1,0 +1,112 @@
+@startuml
+' PlantUML ER diagram for FlowGate
+
+entity "users" as User {
+  * id : UUID
+  --
+  username : varchar
+  email : varchar
+  password_hash : varchar
+  full_name : varchar
+  enabled : boolean
+  created_at : timestamp
+}
+
+entity "roles" as Role {
+  * id : UUID
+  --
+  name : varchar
+  description : varchar
+}
+
+entity "user_roles" as UserRole {
+  * user_id : UUID
+  * role_id : UUID
+}
+
+entity "request_types" as RequestType {
+  * id : UUID
+  --
+  code : varchar
+  name : varchar
+  description : text
+  payload_schema : json
+}
+
+entity "workflows" as Workflow {
+  * id : UUID
+  --
+  request_type_id : UUID
+  name : varchar
+  description : text
+  active : boolean
+}
+
+entity "workflow_steps" as WorkflowStep {
+  * id : UUID
+  --
+  workflow_id : UUID
+  step_order : int
+  approver_role_id : UUID
+  approver_user_id : UUID
+  require_comment_on_reject : boolean
+}
+
+entity "requests" as Request {
+  * id : UUID
+  --
+  request_type_id : UUID
+  creator_id : UUID
+  workflow_id : UUID
+  payload : json
+  status : varchar
+  created_at : timestamp
+  submitted_at : timestamp
+  closed_at : timestamp
+}
+
+entity "approval_actions" as ApprovalAction {
+  * id : UUID
+  --
+  request_id : UUID
+  step_id : UUID
+  actor_id : UUID
+  action : varchar
+  comment : text
+  created_at : timestamp
+}
+
+entity "comments" as Comment {
+  * id : UUID
+  --
+  request_id : UUID
+  author_id : UUID
+  content : text
+  created_at : timestamp
+}
+
+entity "notifications" as Notification {
+  * id : UUID
+  --
+  user_id : UUID
+  type : varchar
+  payload : json
+  read : boolean
+  created_at : timestamp
+}
+
+' Relationships
+User ||--o{ UserRole : has
+Role ||--o{ UserRole : has
+RequestType ||--o{ Workflow : defines
+Workflow ||--o{ WorkflowStep : has
+Request }o--|| RequestType : "is of"
+Request }o--|| Workflow : "uses_snapshot_of"
+Request ||--o{ ApprovalAction : records
+WorkflowStep ||--o{ ApprovalAction : triggers
+Request ||--o{ Comment : has
+User ||--o{ ApprovalAction : performed
+User ||--o{ Comment : authored
+User ||--o{ Notification : receives
+
+@enduml
