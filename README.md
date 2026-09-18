@@ -41,14 +41,29 @@ Admins configure request types and approval steps, employees submit requests, an
 
 ### Setup
 
-The project is currently being initialized. Once the backend and frontend applications are added:
+Local development helper files have been added to the repository.
 
-1. Configure the PostgreSQL connection and JWT settings for the backend.
-2. Run the database migrations with Flyway.
-3. Start the Spring Boot backend from `backend/`.
-4. Install frontend dependencies and start the Angular application from `frontend/`.
+1. Start local database and pgAdmin:
 
-Detailed commands and environment variable documentation will be added as the application configuration is introduced.
+   - docker compose up -d
+   - pgAdmin UI: http://localhost:8081 (login: admin@flowgate.local / admin)
+   - PostgreSQL: host=localhost port=5432 db=flowgate user=flowgate password=flowgatepass
+
+2. Backend (Spring Boot) — generated in `backend/`:
+
+   - Configure application properties (see `backend/README-backend.md` for recommended env variables).
+   - Build: mvn -f backend/pom.xml clean package
+   - Run: mvn -f backend spring-boot:run
+
+3. Frontend (Angular) — not generated automatically in this run. To create the frontend locally:
+
+   - npm i -g @angular/cli
+   - ng new frontend --standalone --routing --style=scss
+   - cd frontend && npm install && ng serve
+
+4. After backend and database are running, open OpenAPI docs at http://localhost:8080/swagger-ui.html (backend default port) once the app is started.
+
+More detailed environment and JWT configuration will be added as services are implemented.
 
 ## Workflow Lifecycle
 
