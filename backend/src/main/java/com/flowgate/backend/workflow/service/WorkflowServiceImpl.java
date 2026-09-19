@@ -99,6 +99,23 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    public List<WorkflowDto> searchWorkflows(String query) {
+        if (query == null || query.isBlank()) {
+            return workflowRepository.findAll().stream()
+                    .sorted(Comparator.comparing(Workflow::getCreatedAt).reversed())
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
+        }
+        String q = query.toLowerCase();
+        return workflowRepository.findAll().stream()
+                .filter(w -> (w.getName() != null && w.getName().toLowerCase().contains(q))
+                        || (w.getRequestType() != null && w.getRequestType().getName() != null && w.getRequestType().getName().toLowerCase().contains(q)))
+                .sorted(Comparator.comparing(Workflow::getCreatedAt).reversed())
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public RequestTypeDto updateRequestType(UUID id, CreateRequestTypeRequest request) {
         RequestType type = requestTypeRepository.findById(id)

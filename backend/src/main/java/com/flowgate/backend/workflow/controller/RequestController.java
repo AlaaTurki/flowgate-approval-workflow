@@ -96,6 +96,20 @@ public class RequestController {
         return requestService.getDashboardStats(currentUser.getId());
     }
 
+    @GetMapping("/history")
+    @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
+    public List<RequestDto> getHistory(@AuthenticationPrincipal UserDetails userDetails,
+                                       @RequestParam(required = false) String requestTypeId,
+                                       @RequestParam(required = false) String status,
+                                       @RequestParam(required = false) String from,
+                                       @RequestParam(required = false) String to,
+                                       @RequestParam(required = false, defaultValue = "0") Integer page,
+                                       @RequestParam(required = false, defaultValue = "20") Integer size) {
+        User currentUser = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return requestService.getHistoryForUser(currentUser.getId(), requestTypeId, status, from, to, page, size);
+    }
+
     @PostMapping("/{id}/approve")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public RequestDto approve(@PathVariable UUID id,

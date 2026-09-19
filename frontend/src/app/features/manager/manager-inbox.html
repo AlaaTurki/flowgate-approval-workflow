@@ -12,6 +12,7 @@
       <button class="nav-pill" [class.active]="activeNav === 'Inbox'" type="button" (click)="selectNav('Inbox')">Inbox</button>
       <button class="nav-pill" [class.active]="activeNav === 'Team requests'" type="button" (click)="selectNav('Team requests')">Team requests</button>
       <button class="nav-pill" [class.active]="activeNav === 'Reports'" type="button" (click)="selectNav('Reports')">Reports</button>
+      <button class="nav-pill" [class.active]="activeNav === 'History'" type="button" (click)="selectNav('History')">History</button>
     </nav>
   </aside>
 
@@ -56,28 +57,52 @@
         <span class="tag">Live queue</span>
       </div>
 
-      <div class="request-list">
-        <article class="request-card" *ngFor="let item of visibleQueue">
-          <div class="request-head">
-            <div>
-              <p class="muted">{{ item.id }}</p>
-              <h3>{{ item.request }}</h3>
+      <div style="display:flex;gap:1rem;align-items:flex-start;">
+        <div class="request-list" style="flex:1;">
+          <article class="request-card" *ngFor="let item of visibleQueue" (click)="viewDetail(item.id)">
+            <div class="request-head">
+              <div>
+                <p class="muted">{{ item.id }}</p>
+                <h3>{{ item.request }}</h3>
+              </div>
+              <span class="priority" [ngClass]="item.priority.toLowerCase()">{{ item.priority }}</span>
             </div>
-            <span class="priority" [ngClass]="item.priority.toLowerCase()">{{ item.priority }}</span>
-          </div>
 
-          <div class="meta-row">
-            <span>Employee: {{ item.employee }}</span>
-            <span>Type: {{ item.type }}</span>
-            <span>Amount: {{ item.amount }}</span>
-            <span>Due: {{ item.due }}</span>
-          </div>
+            <div class="meta-row">
+              <span>Employee: {{ item.employee }}</span>
+              <span>Type: {{ item.type }}</span>
+              <span>Amount: {{ item.amount }}</span>
+              <span>Due: {{ item.due }}</span>
+            </div>
 
-          <div class="button-row">
-            <button class="approve" type="button" (click)="approve(item)">Approve</button>
-            <button class="reject" type="button" (click)="reject(item)">Reject</button>
+            <div class="button-row">
+              <button class="approve" type="button" (click)="approve(item); $event.stopPropagation()">Approve</button>
+              <button class="reject" type="button" (click)="reject(item); $event.stopPropagation()">Reject</button>
+            </div>
+          </article>
+        </div>
+
+        <aside class="panel detail-panel" style="width:420px;" *ngIf="selectedDetail">
+          <div class="panel-header">
+            <h3>Request detail</h3>
+            <button class="mini-btn" type="button" (click)="closeDetail()">Close</button>
           </div>
-        </article>
+          <div *ngIf="selectedDetail; else loading">
+            <p class="muted">{{ selectedDetail.requestTypeName }}</p>
+            <h4>{{ selectedDetail.title }}</h4>
+            <p>{{ selectedDetail.description }}</p>
+            <div class="timeline">
+              <div class="timeline-item" *ngFor="let action of selectedDetail.actions">
+                <strong>{{ action.actionType }}</strong>
+                <div><small class="muted">by {{ action.actorName }} • {{ action.createdAt | date:'short' }}</small></div>
+                <p>{{ action.comment || 'No comment' }}</p>
+              </div>
+            </div>
+          </div>
+          <ng-template #loading>
+            <p class="empty-state">Loading...</p>
+          </ng-template>
+        </aside>
       </div>
     </section>
 
@@ -117,6 +142,65 @@
           <strong>{{ card.value }}</strong>
           <small>{{ card.hint }}</small>
         </article>
+      </div>
+    </section>
+
+    <section class="list-panel" *ngIf="activeNav === 'History'">
+      <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center;gap:0.6rem;">
+        <div>
+          <h2>Approval history</h2>
+          <small class="eyebrow subtle">Requests you acted on</small>
+        </div>
+        <div style="display:flex;gap:0.6rem;align-items:center;">
+          <select [(ngModel)]="filter.requestTypeId">
+            <option value="">All types</option>
+            <option *ngFor="let t of workflowTemplates" [value]="t.name">{{ t.name }}</option>
+          </select>
+          <select [(ngModel)]="filter.status">
+            <option value="">Any status</option>
+            <option value="SUBMITTED">Submitted</option>
+            <option value="IN_REVIEW">In review</option>
+            <option value="APPROVED">Approved</option>
+            <option value="REJECTED">Rejected</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+          <input type="date" [(ngModel)]="filter.from" />
+          <input type="date" [(ngModel)]="filter.to" />
+          <button class="mini-btn" (click)="applyHistoryFilters()">Apply</button>
+          <button class="mini-btn" (click)="clearHistoryFilters()">Clear</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Request</th>
+              <th>Type</th>
+              <th>Status</th>
+              <th>Updated</th>
+              <th>Last comment</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let h of history">
+              <td>{{ h.title }}</td>
+              <td>{{ h.requestTypeName }}</td>
+              <td>{{ h.status }}</td>
+              <td>{{ h.updatedAt | date: 'short' }}</td>
+              <td>{{ h.lastComment }}</td>
+            </tr>
+            <tr *ngIf="!history.length">
+              <td colspan="5" class="empty-state">No approval history yet.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div style="display:flex;justify-content:center;gap:0.6rem;margin-top:0.75rem;">
+          <button class="mini-btn" (click)="prevPage()">Prev</button>
+          <span>Page {{ page + 1 }}</span>
+          <button class="mini-btn" (click)="nextPage()">Next</button>
+        </div>
       </div>
     </section>
   </section>

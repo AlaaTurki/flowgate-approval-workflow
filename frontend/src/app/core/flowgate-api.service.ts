@@ -9,6 +9,24 @@ export interface RequestTypeDto {
   createdAt?: string;
 }
 
+export interface WorkflowStepDto {
+  id: string;
+  name: string;
+  orderIndex: number;
+  approverRole?: string;
+  approverUserId?: string | null;
+  requiresComment?: boolean;
+}
+
+export interface WorkflowDto {
+  id: string;
+  name: string;
+  requestTypeId?: string | null;
+  active?: boolean;
+  createdAt?: string;
+  steps?: WorkflowStepDto[];
+}
+
 export interface UserDto {
   id: string;
   username: string;
@@ -92,6 +110,10 @@ export class FlowgateApiService {
     return this.http.get<UserDto[]>(`${this.baseUrl}/api/users`);
   }
 
+  createUser(payload: Partial<UserDto> & { password: string; roles?: string[] }) {
+    return this.http.post<UserDto>(`${this.baseUrl}/api/users`, payload);
+  }
+
   updateUser(id: string, payload: Partial<UserDto>) {
     return this.http.put<UserDto>(`${this.baseUrl}/api/users/${id}`, payload);
   }
@@ -120,6 +142,11 @@ export class FlowgateApiService {
     return this.http.delete<void>(`${this.baseUrl}/api/workflows/workflows/${id}`);
   }
 
+  searchWorkflows(query?: string) {
+    const params = query ? `?query=${encodeURIComponent(query)}` : '';
+    return this.http.get<WorkflowDto[]>(`${this.baseUrl}/api/workflows/workflows${params}`);
+  }
+
   createRequest(payload: CreateRequestPayload) {
     return this.http.post<RequestDto>(`${this.baseUrl}/api/requests`, payload);
   }
@@ -146,6 +173,20 @@ export class FlowgateApiService {
 
   getPendingApprovals() {
     return this.http.get<RequestDto[]>(`${this.baseUrl}/api/requests/pending`);
+  }
+
+  getManagerHistory(params?: { requestTypeId?: string; status?: string; from?: string; to?: string; page?: number; size?: number }) {
+    const qs: string[] = [];
+    if (params) {
+      if (params.requestTypeId) qs.push(`requestTypeId=${encodeURIComponent(params.requestTypeId)}`);
+      if (params.status) qs.push(`status=${encodeURIComponent(params.status)}`);
+      if (params.from) qs.push(`from=${encodeURIComponent(params.from)}`);
+      if (params.to) qs.push(`to=${encodeURIComponent(params.to)}`);
+      if (params.page != null) qs.push(`page=${params.page}`);
+      if (params.size != null) qs.push(`size=${params.size}`);
+    }
+    const q = qs.length ? `?${qs.join('&')}` : '';
+    return this.http.get<RequestDto[]>(`${this.baseUrl}/api/requests/history${q}`);
   }
 
   approveRequest(requestId: string, comment?: string) {

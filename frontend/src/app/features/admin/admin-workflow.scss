@@ -265,6 +265,44 @@ input, select, textarea {
   background: rgba(15, 23, 42, 0.4);
 }
 
+/* users table small visuals */
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg,#2563eb,#7c3aed);
+  color: #fff;
+  font-weight: 700;
+}
+
+.status-badge {
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  background: rgba(148,163,184,0.08);
+  color: #cbd5e1;
+}
+.status-badge.active { background: linear-gradient(135deg,#10b981,#34d399); color: #042; }
+
+/* modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(2,6,23,0.55);
+  z-index: 60;
+}
+.modal {
+  width: min(720px, 95%);
+  background: rgba(8,16,29,0.98);
+  padding: 1.25rem;
+  border-radius: 12px;
+  border: 1px solid rgba(148,163,184,0.08);
+}
+
 @media (max-width: 960px) {
   .workspace-shell { grid-template-columns: 1fr; }
   .sidebar { border-right: 0; border-bottom: 1px solid rgba(148, 163, 184, 0.12); }

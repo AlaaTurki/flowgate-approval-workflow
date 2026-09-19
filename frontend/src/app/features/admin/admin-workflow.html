@@ -92,6 +92,11 @@
           <h2>Existing workflows</h2>
         </div>
 
+        <div style="display:flex;align-items:center;gap:0.6rem;margin-bottom:0.6rem;">
+          <input placeholder="Search workflows or types" #q style="flex:1;padding:0.6rem;border-radius:8px;" (input)="searchWorkflows(q.value)" />
+          <button class="mini-btn" type="button" (click)="searchWorkflows('')">Clear</button>
+        </div>
+
         <div class="template-list">
           <article
             class="template-card"
@@ -117,36 +122,95 @@
     </div>
 
     <section class="panel" *ngIf="activeNav === 'Users'">
-      <div class="panel-header">
-        <h2>Users</h2>
-        <span class="tag">{{ users.length }} total</span>
+      <div class="panel-header" style="display:flex;justify-content:space-between;align-items:center;gap:1rem;">
+        <div style="display:flex;flex-direction:column;">
+          <h2>Users</h2>
+          <small class="eyebrow subtle">Manage application users and roles</small>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.6rem;">
+          <span class="tag">{{ users.length }} total</span>
+          <button class="mini-btn" type="button" (click)="openCreateUser()">New user</button>
+        </div>
       </div>
 
       <div class="table-wrap">
-        <table class="users-table">
+        <table class="users-table improved">
           <thead>
             <tr>
-              <th>Username</th>
+              <th style="width:120px">Username</th>
               <th>Email</th>
               <th>Full name</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th style="width:120px">Status</th>
+              <th style="width:220px">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr *ngFor="let user of users">
-              <td>{{ user.username }}</td>
+              <td>
+                <div style="display:flex;align-items:center;gap:0.6rem;">
+                  <div class="avatar">{{ user.username?.charAt(0)?.toUpperCase() }}</div>
+                  <div style="display:flex;flex-direction:column;">
+                    <strong>{{ user.username }}</strong>
+                    <small class="muted">{{ user.createdAt ? (user.createdAt | date:'short') : '' }}</small>
+                  </div>
+                </div>
+              </td>
               <td>{{ user.email }}</td>
               <td>{{ user.fullName }}</td>
-              <td>{{ user.enabled ? 'Active' : 'Disabled' }}</td>
               <td>
-                <button class="mini-btn" type="button" (click)="editUser(user)">Edit</button>
-                <button class="mini-btn" type="button" (click)="confirmDeleteUser(user)">Delete</button>
+                <span class="status-badge" [class.active]="user.enabled">{{ user.enabled ? 'Active' : 'Disabled' }}</span>
               </td>
+              <td>
+                <button class="mini-btn" type="button" (click)="openEditUser(user)">Edit</button>
+                <button class="mini-btn" type="button" (click)="confirmDeleteUser(user)">Delete</button>
+                <button class="mini-btn" type="button" (click)="impersonate(user)">Impersonate</button>
+              </td>
+            </tr>
+            <tr *ngIf="!users.length">
+              <td colspan="5" class="empty-state">No users found.</td>
             </tr>
           </tbody>
         </table>
       </div>
+
+      <!-- simple modal for create/edit user -->
+      <div class="modal-backdrop" *ngIf="showUserModal">
+        <div class="modal">
+          <h3>{{ editingUser ? 'Edit user' : 'Create new user' }}</h3>
+          <form [formGroup]="userForm" (ngSubmit)="saveUser()">
+            <label>
+              Username
+              <input formControlName="username" placeholder="username" [readonly]="editingUser" />
+            </label>
+            <label>
+              Full name
+              <input formControlName="fullName" placeholder="Full name" />
+            </label>
+            <label>
+              Email
+              <input formControlName="email" placeholder="user@example.com" />
+            </label>
+            <label *ngIf="!editingUser">
+              Password
+              <input formControlName="password" type="password" autocomplete="new-password" />
+            </label>
+            <label>
+              Roles
+              <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+                <label><input type="checkbox" (change)="toggleRole('ROLE_EMPLOYEE',$event)" [checked]="hasRole('ROLE_EMPLOYEE')" /> Employee</label>
+                <label><input type="checkbox" (change)="toggleRole('ROLE_MANAGER',$event)" [checked]="hasRole('ROLE_MANAGER')" /> Manager</label>
+                <label><input type="checkbox" (change)="toggleRole('ROLE_ADMIN',$event)" [checked]="hasRole('ROLE_ADMIN')" /> Admin</label>
+              </div>
+            </label>
+
+            <div style="display:flex;gap:0.6rem;justify-content:flex-end;margin-top:1rem;">
+              <button type="button" class="mini-btn" (click)="closeUserModal()">Cancel</button>
+              <button type="submit">{{ editingUser ? 'Save changes' : 'Create user' }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
     </section>
 
     <section class="panel" *ngIf="activeNav === 'Policies'">

@@ -258,6 +258,64 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<RequestDto> getHistoryForUser(UUID userId, String requestTypeId, String status, String from, String to, Integer page, Integer size) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        // stream all requests where the user acted
+        java.util.stream.Stream<Request> stream = requestRepository.findAll().stream()
+                .filter(req -> req.getActions() != null && req.getActions().stream().anyMatch(a -> a.getActor() != null && user.getId().equals(a.getActor().getId())));
+
+        // filter by requestTypeId if provided
+        if (requestTypeId != null && !requestTypeId.isBlank()) {
+            try {
+                java.util.UUID rtId = java.util.UUID.fromString(requestTypeId);
+                stream = stream.filter(r -> r.getRequestType() != null && rtId.equals(r.getRequestType().getId()));
+            } catch (IllegalArgumentException e) {
+                // ignore invalid uuid and return empty
+                return List.of();
+            }
+        }
+
+        // filter by status if provided
+        if (status != null && !status.isBlank()) {
+            try {
+                RequestStatus rs = RequestStatus.valueOf(status.toUpperCase());
+                stream = stream.filter(r -> r.getStatus() == rs);
+            } catch (IllegalArgumentException e) {
+                // invalid status - ignore the filter
+            }
+        }
+
+        // filter by date range (createdAt)
+        java.time.OffsetDateTime fromDt = null, toDt = null;
+        try {
+            if (from != null && !from.isBlank()) {
+                java.time.LocalDate ld = java.time.LocalDate.parse(from);
+                fromDt = ld.atStartOfDay().atOffset(java.time.ZoneOffset.UTC);
+            }
+            if (to != null && !to.isBlank()) {
+                java.time.LocalDate ld2 = java.time.LocalDate.parse(to);
+                toDt = ld2.plusDays(1).atStartOfDay().atOffset(java.time.ZoneOffset.UTC).minusNanos(1);
+            }
+        } catch (java.time.format.DateTimeParseException e) {
+            // ignore invalid dates
+        }
+
+        if (fromDt != null) stream = stream.filter(r -> r.getCreatedAt() != null && !r.getCreatedAt().isBefore(fromDt));
+        if (toDt != null) stream = stream.filter(r -> r.getCreatedAt() != null && !r.getCreatedAt().isAfter(toDt));
+
+        // sorting
+        stream = stream.sorted(Comparator.comparing(Request::getUpdatedAt).reversed());
+
+        // pagination
+        int p = (page != null && page >= 0) ? page : 0;
+        int s = (size != null && size > 0) ? size : 20;
+        return stream.skip((long) p * s).limit(s).map(this::toDto).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public DashboardStatsDto getDashboardStats(UUID userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));

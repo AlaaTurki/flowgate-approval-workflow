@@ -16,4 +16,7 @@ public interface WorkflowService {
     WorkflowDto createWorkflow(UUID requestTypeId, CreateWorkflowRequest request);
     List<WorkflowDto> getWorkflowsForType(UUID requestTypeId);
     void deleteWorkflow(UUID workflowId);
+
+    // search workflows by name or request type
+    List<WorkflowDto> searchWorkflows(String query);
 }

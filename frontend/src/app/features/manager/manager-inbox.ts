@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { AuthService } from '../../core/auth.service';
-import { FlowgateApiService, RequestDto } from '../../core/flowgate-api.service';
+import { FlowgateApiService, RequestDto, RequestDetailDto } from '../../core/flowgate-api.service';
 
 interface ApprovalItem {
   id: string;
@@ -24,6 +24,7 @@ export class ManagerInboxComponent implements OnInit {
   readonly username: string;
   activeNav = 'Inbox';
   queue: ApprovalItem[] = [];
+  selectedDetail: RequestDetailDto | null = null;
   readonly stats = {
    pending: 0,
    approvedToday: 0,
@@ -52,9 +53,61 @@ export class ManagerInboxComponent implements OnInit {
    ];
   }
 
+  history: RequestDto[] = [];
+  filter = {
+   requestTypeId: '',
+   status: '',
+   from: '',
+   to: '',
+  };
+  page = 0;
+  size = 10;
+
   ngOnInit(): void {
    this.loadQueue();
    this.loadDashboardStats();
+   this.loadHistory();
+  }
+
+  private loadHistory(): void {
+   this.api.getManagerHistory({
+     requestTypeId: this.filter.requestTypeId || undefined,
+     status: this.filter.status || undefined,
+     from: this.filter.from || undefined,
+     to: this.filter.to || undefined,
+     page: this.page,
+     size: this.size,
+   }).subscribe({
+     next: (items) => {
+       this.history = items;
+     },
+     error: () => {
+       this.history = [];
+     },
+   });
+  }
+
+  applyHistoryFilters(): void {
+   this.page = 0;
+   this.loadHistory();
+  }
+
+  clearHistoryFilters(): void {
+   this.filter = { requestTypeId: '', status: '', from: '', to: '' };
+   this.page = 0;
+   this.loadHistory();
+  }
+
+  prevPage(): void {
+   if (this.page > 0) {
+     this.page--;
+     this.loadHistory();
+   }
+  }
+
+  nextPage(): void {
+   this.page++;
+   this.loadHistory();
   }
 
   selectNav(name: string): void {
@@ -92,6 +145,20 @@ export class ManagerInboxComponent implements OnInit {
      },
      error: () => window.alert('Unable to reject this request.'),
    });
+  }
+
+  viewDetail(id: string): void {
+   this.selectedDetail = null;
+   this.api.getRequestDetail(id).subscribe({
+     next: (detail) => {
+       this.selectedDetail = detail;
+     },
+     error: () => window.alert('Unable to load request details.'),
+   });
+  }
+
+  closeDetail(): void {
+   this.selectedDetail = null;
   }
 
   logout(): void {

@@ -22,4 +22,7 @@ public interface RequestService {
     List<RequestDto> listAllRequests();
     RequestDto updateRequest(UUID requestId, CreateRequestRequest request);
     void deleteRequest(UUID requestId);
+
+    // history: requests where the user acted (approved/rejected/submitted)
+    List<RequestDto> getHistoryForUser(UUID userId, String requestTypeId, String status, String from, String to, Integer page, Integer size);
 }

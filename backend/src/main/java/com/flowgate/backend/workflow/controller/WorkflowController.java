@@ -56,6 +56,12 @@ public class WorkflowController {
         return ResponseEntity.status(HttpStatus.CREATED).body(workflowService.createWorkflow(requestTypeId, request));
     }
 
+    @GetMapping("/workflows")
+    @PreAuthorize("hasAnyRole('ADMIN','MANAGER','EMPLOYEE')")
+    public List<WorkflowDto> searchWorkflows(@RequestParam(required = false) String query) {
+        return workflowService.searchWorkflows(query);
+    }
+
     @DeleteMapping("/workflows/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteWorkflow(@PathVariable UUID id) {

@@ -62,6 +62,17 @@ export class AdminWorkflowComponent implements OnInit {
     this.loadUsers();
   }
 
+  searchWorkflows(query: string | null | undefined): void {
+    this.api.searchWorkflows(query ?? '').subscribe({
+      next: (workflows) => {
+        this.workflowTemplates = workflows.map((w) => ({ name: w.name, steps: (w.steps || []).map((s) => s.name) }));
+      },
+      error: () => {
+        // leave existing list unchanged on error
+      },
+    });
+  }
+
   createNewWorkflow(): void {
     this.selectedWorkflowName = null;
     this.form.reset({
@@ -74,20 +85,81 @@ export class AdminWorkflowComponent implements OnInit {
     this.activeNav = 'Workflow builder';
   }
 
-  editUser(user: UserDto): void {
-    const newFull = window.prompt('Full name', user.fullName ?? '');
-    if (newFull === null) return;
-    const newEmail = window.prompt('Email', user.email ?? '');
-    if (newEmail === null) return;
+  // user modal state
+  showUserModal = false;
+  editingUser: UserDto | null = null;
+  selectedRoles: string[] = [];
+  userForm = this.fb.nonNullable.group({
+    username: ['', Validators.required],
+    fullName: [''],
+    email: ['', [Validators.required, Validators.email]],
+    password: [''],
+  });
 
-    this.api.updateUser(user.id, { fullName: newFull, email: newEmail, enabled: user.enabled }).subscribe({
-      next: (updated) => {
-        const idx = this.users.findIndex((u) => u.id === updated.id);
-        if (idx >= 0) this.users[idx] = updated;
-        window.alert('User updated.');
+  openCreateUser(): void {
+    this.editingUser = null;
+    this.selectedRoles = ['ROLE_EMPLOYEE'];
+    this.userForm.reset({ username: '', fullName: '', email: '', password: '' });
+    this.showUserModal = true;
+  }
+
+  openEditUser(user: UserDto): void {
+    this.editingUser = user;
+    this.selectedRoles = (user as any).roles && Array.isArray((user as any).roles) ? (user as any).roles : ['ROLE_EMPLOYEE'];
+    // basic patch - allow changing full name and email and enabled status via form
+    this.userForm.patchValue({ username: user.username, fullName: user.fullName ?? '', email: user.email ?? '', password: '' });
+    this.showUserModal = true;
+  }
+
+  closeUserModal(): void {
+    this.showUserModal = false;
+  }
+
+  saveUser(): void {
+    if (this.userForm.invalid) {
+      this.userForm.markAllAsTouched();
+      return;
+    }
+
+    const data = this.userForm.getRawValue();
+    const payload: any = { username: data.username, fullName: data.fullName, email: data.email };
+    if (!this.editingUser) payload.password = data.password || 'changeme';
+    payload.roles = this.selectedRoles;
+
+    if (this.editingUser) {
+      this.api.updateUser(this.editingUser.id, payload).subscribe({
+        next: (updated) => {
+          const idx = this.users.findIndex((u) => u.id === updated.id);
+          if (idx >= 0) this.users[idx] = updated;
+          window.alert('User updated.');
+          this.closeUserModal();
+        },
+        error: () => window.alert('Unable to update user.'),
+      });
+      return;
+    }
+
+    this.api.createUser(payload).subscribe({
+      next: (created) => {
+        this.users.unshift(created);
+        window.alert('User created.');
+        this.closeUserModal();
       },
-      error: () => window.alert('Unable to update user.'),
+      error: () => window.alert('Unable to create user.'),
     });
+  }
+
+  toggleRole(role: string, event: Event): void {
+    const checked = (event.target as HTMLInputElement).checked;
+    if (checked) {
+      if (!this.selectedRoles.includes(role)) this.selectedRoles.push(role);
+    } else {
+      this.selectedRoles = this.selectedRoles.filter((r) => r !== role);
+    }
+  }
+
+  hasRole(role: string): boolean {
+    return this.selectedRoles.includes(role);
   }
 
   confirmDeleteUser(user: UserDto): void {
@@ -100,6 +172,18 @@ export class AdminWorkflowComponent implements OnInit {
       error: () => window.alert('Unable to delete user.'),
     });
   }
+
+  // lightweight stubs to extract roles from user DTO if present
+  
+  impersonate(user: UserDto): void {
+    // lightweight admin impersonation: set username in local storage and reload
+    if (!confirm(`Impersonate ${user.username}? You will be logged out as ${this.username}.`)) return;
+    localStorage.setItem('impersonate', user.username);
+    window.alert('Impersonation flag set (dev). Please log out and log in as the impersonated user.');
+  }
+
+  // keep existing helper functions below
+  
 
   selectNav(name: string): void {
     this.activeNav = name;

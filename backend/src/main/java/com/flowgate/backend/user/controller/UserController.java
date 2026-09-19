@@ -25,6 +25,15 @@ public class UserController {
         return ResponseEntity.ok(userService.findAll());
     }
 
+    @PostMapping
+    // allow only admins to create users via admin UI
+    // (registration flow may exist separately for public signup)
+    // here we accept the same RegisterRequest DTO used by registration
+    public ResponseEntity<UserDto> createUser(@RequestBody com.flowgate.backend.user.dto.RegisterRequest req) {
+        UserDto created = userService.register(req);
+        return ResponseEntity.status(201).body(created);
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<UserDto> getUser(@PathVariable UUID id) {
         return userService.findById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
