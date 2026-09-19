@@ -90,10 +90,17 @@
         </div>
 
         <div class="template-list">
-          <article class="template-card" *ngFor="let template of workflowTemplates">
+          <article
+            class="template-card"
+            *ngFor="let template of workflowTemplates"
+            [class.is-open]="selectedWorkflowName === template.name"
+            (click)="handleDetails(template)"
+            tabindex="0"
+            (keydown.enter)="handleDetails(template)"
+          >
             <div class="template-head">
               <h3>{{ template.name }}</h3>
-              <button type="button" class="mini-btn" (click)="handleDetails(template)">Open</button>
+              <button type="button" class="mini-btn" (click)="$event.stopPropagation(); handleDetails(template)">Open</button>
             </div>
             <ul>
               <li *ngFor="let step of template.steps">{{ step }}</li>

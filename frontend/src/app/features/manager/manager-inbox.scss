@@ -99,6 +99,42 @@ button {
   font-size: clamp(1.3rem, 2vw, 1.8rem);
 }
 
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  padding: 1.25rem 1rem;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.9), rgba(15, 23, 42, 0.7));
+  box-shadow: inset 0 1px 0 rgba(148, 163, 184, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.stat-card span {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+}
+
+.stat-card strong {
+  font-size: clamp(1.8rem, 2vw, 2.4rem);
+  line-height: 1;
+  color: #f8fafc;
+}
+
+.stat-card small {
+  color: #cbd5e1;
+  font-size: 0.78rem;
+}
+
 .list-panel {
   background: rgba(15, 23, 42, 0.8);
   border: 1px solid rgba(148, 163, 184, 0.12);
@@ -130,7 +166,8 @@ button {
   border: 1px solid rgba(148, 163, 184, 0.12);
   border-radius: 18px;
   padding: 1rem;
-  background: rgba(15, 23, 42, 0.7);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.72), rgba(16, 24, 39, 0.92));
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18);
 }
 
 .request-head {
@@ -191,5 +228,6 @@ button {
 @media (max-width: 900px) {
   .workspace-shell { grid-template-columns: 1fr; }
   .sidebar { border-right: 0; border-bottom: 1px solid rgba(148, 163, 184, 0.12); }
+  .stats-grid { grid-template-columns: 1fr; }
   .topbar, .hero-card, .request-head, .panel-header { flex-direction: column; align-items: flex-start; }
 }

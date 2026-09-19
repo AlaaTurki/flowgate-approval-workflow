@@ -31,6 +31,7 @@ export class AdminWorkflowComponent implements OnInit {
   activeNav = 'Workflow builder';
   workflowTemplates: WorkflowSummary[] = [];
   users: UserDto[] = [];
+  selectedWorkflowName: string | null = null;
 
   constructor(
     private readonly fb: FormBuilder,
@@ -71,11 +72,12 @@ export class AdminWorkflowComponent implements OnInit {
   }
 
   handleDetails(type: WorkflowSummary): void {
+    this.selectedWorkflowName = type.name;
     this.form.patchValue({
       typeName: type.name,
       description: type.steps.join(', '),
     });
-    window.alert(`Loaded workflow details for ${type.name}.`);
+    this.activeNav = 'Workflow builder';
   }
 
   getStepRoleLabel(role: string): string {
