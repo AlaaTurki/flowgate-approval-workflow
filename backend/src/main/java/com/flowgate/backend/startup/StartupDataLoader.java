@@ -28,55 +28,50 @@ public class StartupDataLoader implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) throws Exception {
-        // Ensure default roles exist (already seeded by Flyway but safe to check)
-        Role adminRole = roleRepository.findByName("ROLE_ADMIN").orElseGet(() -> roleRepository.save(Role.builder().id(UUID.randomUUID()).name("ROLE_ADMIN").description("Administrator").build()));
-        Role managerRole = roleRepository.findByName("ROLE_MANAGER").orElseGet(() -> roleRepository.save(Role.builder().id(UUID.randomUUID()).name("ROLE_MANAGER").description("Manager").build()));
-        Role employeeRole = roleRepository.findByName("ROLE_EMPLOYEE").orElseGet(() -> roleRepository.save(Role.builder().id(UUID.randomUUID()).name("ROLE_EMPLOYEE").description("Employee").build()));
+        Role adminRole = roleRepository.findByName("ROLE_ADMIN")
+                .orElseGet(() -> roleRepository.save(Role.builder().name("ROLE_ADMIN").description("Administrator").build()));
+        Role managerRole = roleRepository.findByName("ROLE_MANAGER")
+                .orElseGet(() -> roleRepository.save(Role.builder().name("ROLE_MANAGER").description("Manager").build()));
+        Role employeeRole = roleRepository.findByName("ROLE_EMPLOYEE")
+                .orElseGet(() -> roleRepository.save(Role.builder().name("ROLE_EMPLOYEE").description("Employee").build()));
 
-        // Seed users if missing
         if (userRepository.findByUsername("admin").isEmpty()) {
             User admin = User.builder()
-                    .id(UUID.randomUUID())
                     .username("admin")
                     .email("admin@flowgate.local")
                     .fullName("System Administrator")
                     .passwordHash(passwordEncoder.encode("adminpass"))
                     .enabled(true)
                     .createdAt(OffsetDateTime.now())
-                    .roles(new HashSet<>())
+                    .roles(new HashSet<>(java.util.Set.of(adminRole)))
                     .build();
-            admin.getRoles().add(adminRole);
-            userRepository.save(admin);
+            userRepository.saveAndFlush(admin);
         }
 
         if (userRepository.findByUsername("manager").isEmpty()) {
             User manager = User.builder()
-                    .id(UUID.randomUUID())
                     .username("manager")
                     .email("manager@flowgate.local")
                     .fullName("Default Manager")
                     .passwordHash(passwordEncoder.encode("managerpass"))
                     .enabled(true)
                     .createdAt(OffsetDateTime.now())
-                    .roles(new HashSet<>())
+                    .roles(new HashSet<>(java.util.Set.of(managerRole)))
                     .build();
-            manager.getRoles().add(managerRole);
-            userRepository.save(manager);
+            userRepository.saveAndFlush(manager);
         }
 
         if (userRepository.findByUsername("employee").isEmpty()) {
             User employee = User.builder()
-                    .id(UUID.randomUUID())
                     .username("employee")
                     .email("employee@flowgate.local")
                     .fullName("Default Employee")
                     .passwordHash(passwordEncoder.encode("employeepass"))
                     .enabled(true)
                     .createdAt(OffsetDateTime.now())
-                    .roles(new HashSet<>())
+                    .roles(new HashSet<>(java.util.Set.of(employeeRole)))
                     .build();
-            employee.getRoles().add(employeeRole);
-            userRepository.save(employee);
+            userRepository.saveAndFlush(employee);
         }
     }
 }
