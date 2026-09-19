@@ -32,14 +32,32 @@
       <button type="button" (click)="exportReview()">Export review</button>
     </section>
 
-    <section class="list-panel">
+    <section class="stats-grid">
+      <article class="stat-card">
+        <span>Pending</span>
+        <strong>{{ stats.pending }}</strong>
+        <small>in queue</small>
+      </article>
+      <article class="stat-card">
+        <span>Approved today</span>
+        <strong>{{ stats.approvedToday }}</strong>
+        <small>recent decisions</small>
+      </article>
+      <article class="stat-card">
+        <span>Avg. SLA</span>
+        <strong>{{ stats.avgSla }}</strong>
+        <small>workflow speed</small>
+      </article>
+    </section>
+
+    <section class="list-panel" *ngIf="activeNav === 'Inbox'">
       <div class="panel-header">
         <h2>Approval inbox</h2>
         <span class="tag">Live queue</span>
       </div>
 
       <div class="request-list">
-        <article class="request-card" *ngFor="let item of queue">
+        <article class="request-card" *ngFor="let item of visibleQueue">
           <div class="request-head">
             <div>
               <p class="muted">{{ item.id }}</p>
@@ -59,6 +77,45 @@
             <button class="approve" type="button" (click)="approve(item)">Approve</button>
             <button class="reject" type="button" (click)="reject(item)">Reject</button>
           </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="list-panel" *ngIf="activeNav === 'Team requests'">
+      <div class="panel-header">
+        <h2>Team requests</h2>
+        <span class="tag">Priority snapshot</span>
+      </div>
+
+      <div class="request-list">
+        <article class="request-card" *ngFor="let item of visibleQueue">
+          <div class="request-head">
+            <div>
+              <p class="muted">{{ item.employee }}</p>
+              <h3>{{ item.request }}</h3>
+            </div>
+            <span class="priority" [ngClass]="item.priority.toLowerCase()">{{ item.priority }}</span>
+          </div>
+          <div class="meta-row">
+            <span>Type: {{ item.type }}</span>
+            <span>Amount: {{ item.amount }}</span>
+            <span>Due: {{ item.due }}</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="list-panel" *ngIf="activeNav === 'Reports'">
+      <div class="panel-header">
+        <h2>Reports</h2>
+        <span class="tag">Summary</span>
+      </div>
+
+      <div class="stats-grid">
+        <article class="stat-card" *ngFor="let card of reportCards">
+          <span>{{ card.label }}</span>
+          <strong>{{ card.value }}</strong>
+          <small>{{ card.hint }}</small>
         </article>
       </div>
     </section>

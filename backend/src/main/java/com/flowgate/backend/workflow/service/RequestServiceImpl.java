@@ -3,8 +3,7 @@ package com.flowgate.backend.workflow.service;
 import com.flowgate.backend.user.entity.Role;
 import com.flowgate.backend.user.entity.User;
 import com.flowgate.backend.user.repository.UserRepository;
-import com.flowgate.backend.workflow.dto.CreateRequestRequest;
-import com.flowgate.backend.workflow.dto.RequestDto;
+import com.flowgate.backend.workflow.dto.*;
 import com.flowgate.backend.workflow.entity.*;
 import com.flowgate.backend.workflow.repository.RequestRepository;
 import com.flowgate.backend.workflow.repository.RequestTypeRepository;
@@ -13,6 +12,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -101,6 +101,14 @@ public class RequestServiceImpl implements RequestService {
                 .sorted(Comparator.comparing(Request::getUpdatedAt).reversed())
                 .map(this::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RequestDetailDto getRequestDetail(UUID requestId) {
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+        return toDetailDto(request);
     }
 
     @Override
@@ -216,6 +224,48 @@ public class RequestServiceImpl implements RequestService {
         return hasRequiredRole;
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public DashboardStatsDto getDashboardStats(UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        List<Request> userRequests = requestRepository.findBySubmittedBy(user);
+        List<Request> inReview = requestRepository.findByStatus(RequestStatus.IN_REVIEW);
+
+        long openRequests = userRequests.stream()
+                .filter(request -> request.getStatus() != RequestStatus.APPROVED && request.getStatus() != RequestStatus.REJECTED)
+                .count();
+        long approvedRequests = userRequests.stream()
+                .filter(request -> request.getStatus() == RequestStatus.APPROVED)
+                .count();
+        long rejectedRequests = userRequests.stream()
+                .filter(request -> request.getStatus() == RequestStatus.REJECTED)
+                .count();
+        long pendingApprovals = inReview.stream()
+                .filter(request -> canAct(user, request))
+                .count();
+
+        double averageApprovalDays = userRequests.stream()
+                .filter(request -> request.getStatus() == RequestStatus.APPROVED || request.getStatus() == RequestStatus.REJECTED)
+                .mapToDouble(request -> {
+                    if (request.getCreatedAt() == null || request.getResolvedAt() == null) {
+                        return 0d;
+                    }
+                    return Duration.between(request.getCreatedAt().toInstant(), request.getResolvedAt().toInstant()).toDays();
+                })
+                .average()
+                .orElse(0d);
+
+        return DashboardStatsDto.builder()
+                .openRequests(openRequests)
+                .approvedRequests(approvedRequests)
+                .rejectedRequests(rejectedRequests)
+                .pendingApprovals(pendingApprovals)
+                .averageApprovalDays(averageApprovalDays)
+                .build();
+    }
+
     private RequestDto toDto(Request request) {
         return RequestDto.builder()
                 .id(request.getId())
@@ -231,6 +281,34 @@ public class RequestServiceImpl implements RequestService {
                 .updatedAt(request.getUpdatedAt())
                 .resolvedAt(request.getResolvedAt())
                 .lastComment(request.getLastComment())
+                .build();
+    }
+
+    private RequestDetailDto toDetailDto(Request request) {
+        return RequestDetailDto.builder()
+                .id(request.getId())
+                .requestTypeId(request.getRequestType() != null ? request.getRequestType().getId() : null)
+                .requestTypeName(request.getRequestType() != null ? request.getRequestType().getName() : null)
+                .submittedById(request.getSubmittedBy() != null ? request.getSubmittedBy().getId() : null)
+                .submittedByUsername(request.getSubmittedBy() != null ? request.getSubmittedBy().getUsername() : null)
+                .title(request.getTitle())
+                .description(request.getDescription())
+                .status(request.getStatus())
+                .currentStepIndex(request.getCurrentStepIndex())
+                .createdAt(request.getCreatedAt())
+                .updatedAt(request.getUpdatedAt())
+                .resolvedAt(request.getResolvedAt())
+                .lastComment(request.getLastComment())
+                .actions(request.getActions() == null ? List.of() : request.getActions().stream()
+                        .sorted(Comparator.comparing(ApprovalAction::getCreatedAt))
+                        .map(action -> ApprovalActionDto.builder()
+                                .id(action.getId())
+                                .actorName(action.getActor() != null ? action.getActor().getUsername() : "System")
+                                .actionType(action.getActionType() != null ? action.getActionType().name() : "UNKNOWN")
+                                .comment(action.getComment())
+                                .createdAt(action.getCreatedAt())
+                                .build())
+                        .toList())
                 .build();
     }
 }

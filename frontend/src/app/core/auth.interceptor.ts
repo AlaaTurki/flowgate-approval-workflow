@@ -1,4 +1,4 @@
-import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+﻿import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
@@ -17,7 +17,7 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
 
   const authReq = req.clone({
     setHeaders: {
-      Authorization: `Bearer ${token}`,
+      Authorization: 'Bearer ' + token,
     },
   });
 
@@ -28,6 +28,6 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
         router.navigateByUrl('/login');
       }
       return throwError(() => error);
-    })
+    }),
   );
 };

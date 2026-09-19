@@ -4,6 +4,8 @@ import com.flowgate.backend.user.entity.User;
 import com.flowgate.backend.user.repository.UserRepository;
 import com.flowgate.backend.workflow.dto.ApprovalDecisionRequest;
 import com.flowgate.backend.workflow.dto.CreateRequestRequest;
+import com.flowgate.backend.workflow.dto.DashboardStatsDto;
+import com.flowgate.backend.workflow.dto.RequestDetailDto;
 import com.flowgate.backend.workflow.dto.RequestDto;
 import com.flowgate.backend.workflow.service.RequestService;
 import jakarta.validation.Valid;
@@ -57,8 +59,16 @@ public class RequestController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
-    public RequestDto getRequest(@PathVariable UUID id) {
-        return requestService.getRequest(id);
+    public RequestDetailDto getRequest(@PathVariable UUID id) {
+        return requestService.getRequestDetail(id);
+    }
+
+    @GetMapping("/dashboard")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
+    public DashboardStatsDto getDashboardStats(@AuthenticationPrincipal UserDetails userDetails) {
+        User currentUser = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        return requestService.getDashboardStats(currentUser.getId());
     }
 
     @PostMapping("/{id}/approve")

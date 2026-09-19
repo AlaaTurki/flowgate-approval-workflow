@@ -32,7 +32,7 @@
       <button type="button" (click)="saveDraft()">Save draft</button>
     </section>
 
-    <div class="content-grid">
+    <div class="content-grid" *ngIf="activeNav === 'Workflow builder'">
       <section class="panel builder-panel">
         <div class="panel-header">
           <h2>New workflow</h2>
@@ -91,13 +91,71 @@
 
         <div class="template-list">
           <article class="template-card" *ngFor="let template of workflowTemplates">
-            <h3>{{ template.name }}</h3>
+            <div class="template-head">
+              <h3>{{ template.name }}</h3>
+              <button type="button" class="mini-btn" (click)="handleDetails(template)">Open</button>
+            </div>
             <ul>
               <li *ngFor="let step of template.steps">{{ step }}</li>
             </ul>
           </article>
+          <div class="empty-state" *ngIf="!workflowTemplates.length">
+            No workflow templates yet. Create a request type and approval flow to start.
+          </div>
         </div>
       </aside>
     </div>
+
+    <section class="panel" *ngIf="activeNav === 'Users'">
+      <div class="panel-header">
+        <h2>Users</h2>
+        <span class="tag">{{ users.length }} total</span>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Full name</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users">
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.fullName }}</td>
+            <td>{{ user.enabled ? 'Active' : 'Disabled' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel" *ngIf="activeNav === 'Policies'">
+      <div class="panel-header">
+        <h2>Policies</h2>
+        <span class="tag">Standards</span>
+      </div>
+
+      <div class="template-list">
+        <article class="template-card">
+          <h3>Approval policy</h3>
+          <ul>
+            <li>All request types require an approval route</li>
+            <li>Managers and admins can approve or reject</li>
+            <li>Reject decisions require a comment</li>
+          </ul>
+        </article>
+        <article class="template-card">
+          <h3>Audit controls</h3>
+          <ul>
+            <li>Every action is recorded with actor and timestamp</li>
+            <li>Requests close when approval chain ends</li>
+            <li>Only the current step may authorize a decision</li>
+          </ul>
+        </article>
+      </div>
+    </section>
   </section>
 </main>

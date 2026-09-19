@@ -78,7 +78,8 @@ export class LoginPageComponent implements OnInit, OnDestroy {
       },
       error: (error) => {
         this.isSubmitting = false;
-        this.errorMessage = error?.error?.message ?? (this.isRegisterMode ? 'Unable to create your account.' : 'Invalid username or password.');
+        const backendMessage = error?.error?.message ?? error?.error?.error ?? '';
+        this.errorMessage = backendMessage || (this.isRegisterMode ? 'Unable to create your account.' : 'Invalid username or password.');
       },
     });
   }

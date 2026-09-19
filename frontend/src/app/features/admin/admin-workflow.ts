@@ -2,7 +2,7 @@ import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { AuthService } from '../../core/auth.service';
-import { CreateWorkflowPayload, FlowgateApiService, RequestTypeDto } from '../../core/flowgate-api.service';
+import { CreateWorkflowPayload, FlowgateApiService, RequestTypeDto, UserDto } from '../../core/flowgate-api.service';
 
 interface WorkflowSummary {
   name: string;
@@ -30,6 +30,7 @@ export class AdminWorkflowComponent implements OnInit {
 
   activeNav = 'Workflow builder';
   workflowTemplates: WorkflowSummary[] = [];
+  users: UserDto[] = [];
 
   constructor(
     private readonly fb: FormBuilder,
@@ -57,6 +58,7 @@ export class AdminWorkflowComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadRequestTypes();
+    this.loadUsers();
   }
 
   selectNav(name: string): void {
@@ -66,6 +68,27 @@ export class AdminWorkflowComponent implements OnInit {
   saveDraft(): void {
     this.form.markAsDirty();
     window.alert('Workflow draft saved locally.');
+  }
+
+  handleDetails(type: WorkflowSummary): void {
+    this.form.patchValue({
+      typeName: type.name,
+      description: type.steps.join(', '),
+    });
+    window.alert(`Loaded workflow details for ${type.name}.`);
+  }
+
+  getStepRoleLabel(role: string): string {
+    switch (role) {
+      case 'ROLE_ADMIN':
+        return 'Admin';
+      case 'ROLE_MANAGER':
+        return 'Manager';
+      case 'ROLE_EMPLOYEE':
+        return 'Employee';
+      default:
+        return role;
+    }
   }
 
   get steps(): FormArray {
@@ -150,6 +173,17 @@ export class AdminWorkflowComponent implements OnInit {
           { name: 'Expense Reimbursement', steps: ['Manager approval', 'Finance review'] },
           { name: 'Purchase Request', steps: ['Department head', 'Finance review'] },
         ];
+      },
+    });
+  }
+
+  private loadUsers(): void {
+    this.api.getUsers().subscribe({
+      next: (users) => {
+        this.users = users;
+      },
+      error: () => {
+        this.users = [];
       },
     });
   }

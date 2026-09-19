@@ -1,4 +1,4 @@
-<main class="workspace-shell">
+﻿<main class="workspace-shell">
   <aside class="sidebar">
     <div class="brand-block">
       <div class="brand-mark">F</div>
@@ -35,18 +35,18 @@
     <section class="stats-grid">
       <article class="stat-card">
         <span>Open</span>
-        <strong>3</strong>
-        <small>2 in review</small>
+        <strong>{{ stats.open }}</strong>
+        <small>{{ getOpenRequestsCount() }} active</small>
       </article>
       <article class="stat-card">
         <span>Approved</span>
-        <strong>12</strong>
-        <small>+4 this month</small>
+        <strong>{{ stats.approved }}</strong>
+        <small>{{ requests.length ? 'This cycle' : 'No approvals yet' }}</small>
       </article>
       <article class="stat-card">
         <span>Avg. time</span>
-        <strong>2.4d</strong>
-        <small>faster than last month</small>
+        <strong>{{ stats.avgDays }}</strong>
+        <small>workflow turnaround</small>
       </article>
     </section>
 
@@ -68,12 +68,17 @@
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let request of requests">
+            <tr *ngFor="let request of visibleRequests">
               <td>{{ request.id }}</td>
               <td>{{ request.title }}</td>
               <td>{{ request.type }}</td>
               <td>{{ request.amount }}</td>
-              <td><span class="status" [ngClass]="request.status.toLowerCase().replace(' ', '-')">{{ request.status }}</span></td>
+              <td>
+                <div class="row-actions">
+                  <span class="status" [ngClass]="request.status.toLowerCase().replace(' ', '-')">{{ request.status }}</span>
+                  <button class="small-link" type="button" (click)="viewDetails(request.rawId ?? request.id)">View</button>
+                </div>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -93,6 +98,7 @@
           <label>
             Request type
             <select formControlName="requestTypeId">
+              <option value="">Select a type</option>
               <option *ngFor="let type of requestTypes" [value]="type.id">{{ type.name }}</option>
             </select>
           </label>
@@ -107,9 +113,44 @@
             <textarea formControlName="description" rows="4" placeholder="Describe the request..."></textarea>
           </label>
 
-          <button type="submit">Submit request</button>
+          <button type="submit" [disabled]="isLoading">{{ isLoading ? 'Submitting...' : 'Submit request' }}</button>
         </form>
       </aside>
     </div>
+
+    <section class="panel detail-panel" *ngIf="selectedDetail">
+      <div class="panel-header">
+        <h2>Request detail</h2>
+        <button class="mini-btn" type="button" (click)="closeDetail()">Close</button>
+      </div>
+
+      <div class="detail-grid" *ngIf="selectedDetail; else loadingDetail">
+        <div>
+          <p class="muted">{{ selectedDetail.requestTypeName }}</p>
+          <h3>{{ selectedDetail.title }}</h3>
+        </div>
+        <div class="detail-meta">
+          <span>Status: {{ selectedDetail.status }}</span>
+          <span>Submitted by: {{ selectedDetail.submittedByUsername }}</span>
+        </div>
+        <p>{{ selectedDetail.description }}</p>
+        <div class="timeline" *ngIf="selectedDetail.actions?.length; else noActions">
+          <div class="timeline-item" *ngFor="let action of selectedDetail.actions">
+            <strong>{{ action.actionType }}</strong>
+            <span>{{ action.actorName }}</span>
+            <small>{{ action.comment || 'No comment provided' }}</small>
+            <time>{{ action.createdAt ? (action.createdAt | date: 'medium') : 'Recently' }}</time>
+          </div>
+        </div>
+        <ng-template #noActions>
+          <p class="empty-state">No approval actions yet.</p>
+        </ng-template>
+      </div>
+
+      <ng-template #loadingDetail>
+        <p class="empty-state">Loading request timeline...</p>
+      </ng-template>
+    </section>
   </section>
 </main>
+

@@ -18,22 +18,22 @@
     <form [formGroup]="form" (ngSubmit)="submit()" class="login-form">
       <label *ngIf="isRegisterMode">
         Full name
-        <input formControlName="fullName" type="text" placeholder="Alaa Turki" />
+        <input formControlName="fullName" type="text" autocomplete="name" placeholder="Alaa Turki" />
       </label>
 
       <label>
         Username
-        <input formControlName="username" type="text" [placeholder]="isRegisterMode ? 'newuser' : 'admin'" />
+        <input formControlName="username" type="text" autocomplete="username" [placeholder]="isRegisterMode ? 'newuser' : 'admin'" />
       </label>
 
       <label *ngIf="isRegisterMode">
         Email
-        <input formControlName="email" type="email" placeholder="name@example.com" />
+        <input formControlName="email" type="email" autocomplete="email" placeholder="name@example.com" />
       </label>
 
       <label>
         Password
-        <input formControlName="password" type="password" placeholder="••••••••" />
+        <input formControlName="password" type="password" autocomplete="current-password" placeholder="••••••••" />
       </label>
 
       <div class="error-box" *ngIf="errorMessage">

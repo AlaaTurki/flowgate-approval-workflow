@@ -9,6 +9,15 @@ export interface RequestTypeDto {
   createdAt?: string;
 }
 
+export interface UserDto {
+  id: string;
+  username: string;
+  email: string;
+  fullName: string;
+  enabled: boolean;
+  createdAt?: string;
+}
+
 export interface RequestDto {
   id: string;
   requestTypeId: string;
@@ -23,6 +32,26 @@ export interface RequestDto {
   updatedAt?: string;
   resolvedAt?: string;
   lastComment?: string;
+}
+
+export interface ApprovalActionDto {
+  id: string;
+  actorName: string;
+  actionType: string;
+  comment?: string;
+  createdAt?: string;
+}
+
+export interface RequestDetailDto extends RequestDto {
+  actions: ApprovalActionDto[];
+}
+
+export interface DashboardStatsDto {
+  openRequests: number;
+  approvedRequests: number;
+  rejectedRequests: number;
+  pendingApprovals: number;
+  averageApprovalDays: number;
 }
 
 export interface CreateRequestPayload {
@@ -59,6 +88,10 @@ export class FlowgateApiService {
     return this.http.get<RequestTypeDto[]>(`${this.baseUrl}/api/workflows/request-types`);
   }
 
+  getUsers() {
+    return this.http.get<UserDto[]>(`${this.baseUrl}/api/users`);
+  }
+
   createRequestType(payload: CreateRequestTypePayload) {
     return this.http.post<RequestTypeDto>(`${this.baseUrl}/api/workflows/request-types`, payload);
   }
@@ -73,6 +106,14 @@ export class FlowgateApiService {
 
   getMyRequests() {
     return this.http.get<RequestDto[]>(`${this.baseUrl}/api/requests/mine`);
+  }
+
+  getRequestDetail(requestId: string) {
+    return this.http.get<RequestDetailDto>(`${this.baseUrl}/api/requests/${requestId}`);
+  }
+
+  getDashboardStats() {
+    return this.http.get<DashboardStatsDto>(`${this.baseUrl}/api/requests/dashboard`);
   }
 
   getPendingApprovals() {
