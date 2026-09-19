@@ -1,0 +1,44 @@
+<main class="auth-shell">
+  <section class="auth-card">
+    <div class="brand">
+      <span class="brand-mark">F</span>
+      <div>
+        <p class="eyebrow">Approval workflow</p>
+        <h1>FlowGate</h1>
+      </div>
+    </div>
+
+    <div class="intro">
+      <h2>Welcome back</h2>
+      <p>Sign in to manage requests, approvals, and audit activity.</p>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submit()" class="login-form">
+      <label>
+        Username
+        <input formControlName="username" type="text" placeholder="admin" />
+      </label>
+
+      <label>
+        Password
+        <input formControlName="password" type="password" placeholder="••••••••" />
+      </label>
+
+      <div class="error-box" *ngIf="errorMessage">
+        {{ errorMessage }}
+      </div>
+
+      <button type="submit" [disabled]="form.invalid || isSubmitting">
+        {{ isSubmitting ? 'Signing in...' : 'Sign in' }}
+      </button>
+    </form>
+
+    <div class="demo-row">
+      <span>Demo credentials</span>
+      <div class="chips">
+        <span>admin / adminpass</span>
+        <span>manager / managerpass</span>
+      </div>
+    </div>
+  </section>
+</main>

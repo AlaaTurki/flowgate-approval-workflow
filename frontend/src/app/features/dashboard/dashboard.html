@@ -1,0 +1,80 @@
+<main class="dashboard-shell">
+  <aside class="sidebar">
+    <div class="brand-block">
+      <div class="brand-mark">F</div>
+      <div>
+        <p class="eyebrow">Approval workflow</p>
+        <h2>FlowGate</h2>
+      </div>
+    </div>
+
+    <nav class="nav-panel">
+      <button class="nav-pill active" type="button">Overview</button>
+      <button class="nav-pill" type="button">Requests</button>
+      <button class="nav-pill" type="button">Approvals</button>
+      <button class="nav-pill" type="button">Users</button>
+    </nav>
+  </aside>
+
+  <section class="main-panel">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">{{ role }} workspace</p>
+        <h1>Welcome back, {{ username }}</h1>
+      </div>
+
+      <button class="logout-btn" type="button" (click)="logout()">Logout</button>
+    </header>
+
+    <section class="hero-card">
+      <div>
+        <p class="eyebrow subtle">Today</p>
+        <h3>Your approval pipeline is running smoothly.</h3>
+      </div>
+      <button type="button">Review queue</button>
+    </section>
+
+    <section class="action-grid">
+      <button *ngFor="let action of quickActions" type="button" class="action-card" [ngClass]="action.tone">
+        <span>{{ action.label }}</span>
+        <small>{{ action.description }}</small>
+      </button>
+    </section>
+
+    <section class="stats-grid">
+      <article class="stat-card" *ngFor="let stat of stats">
+        <span>{{ stat.label }}</span>
+        <strong>{{ stat.value }}</strong>
+        <small>{{ stat.trend }}</small>
+      </article>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <h2>Recent requests</h2>
+        <button type="button">New request</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Request</th>
+            <th>Owner</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let request of requests">
+            <td>{{ request.title }}</td>
+            <td>{{ request.owner }}</td>
+            <td>
+              <span class="status" [ngClass]="request.status.toLowerCase().replace(' ', '-')">
+                {{ request.status }}
+              </span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </section>
+</main>
