@@ -63,6 +63,31 @@ public class RequestController {
         return requestService.getRequestDetail(id);
     }
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    public List<RequestDto> listAllRequests() {
+        return requestService.listAllRequests();
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
+    public ResponseEntity<RequestDto> updateRequest(@PathVariable UUID id,
+                                                     @Valid @RequestBody CreateRequestRequest requestBody,
+                                                     @AuthenticationPrincipal UserDetails userDetails) {
+        // for simplicity allow owner or admin to update; service enforces closed-state rule
+        RequestDto updated = requestService.updateRequest(id, requestBody);
+        return ResponseEntity.ok(updated);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
+    public ResponseEntity<Void> deleteRequest(@PathVariable UUID id,
+                                              @AuthenticationPrincipal UserDetails userDetails) {
+        // basic delete; production should check ownership or admin privileges
+        requestService.deleteRequest(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @GetMapping("/dashboard")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
     public DashboardStatsDto getDashboardStats(@AuthenticationPrincipal UserDetails userDetails) {

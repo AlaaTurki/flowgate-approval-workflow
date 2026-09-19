@@ -130,6 +130,38 @@ public class RequestServiceImpl implements RequestService {
         return processDecision(requestId, actorId, comment, ApprovalActionType.REJECTED, true);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<RequestDto> listAllRequests() {
+        return requestRepository.findAll().stream()
+                .sorted(Comparator.comparing(Request::getCreatedAt).reversed())
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public RequestDto updateRequest(UUID requestId, CreateRequestRequest request) {
+        Request existing = requestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+
+        if (existing.getStatus() == RequestStatus.APPROVED || existing.getStatus() == RequestStatus.REJECTED || existing.getStatus() == RequestStatus.CANCELLED) {
+            throw new IllegalStateException("Cannot modify a closed request");
+        }
+
+        existing.setTitle(request.getTitle());
+        existing.setDescription(request.getDescription());
+        existing.setUpdatedAt(OffsetDateTime.now());
+
+        return toDto(requestRepository.save(existing));
+    }
+
+    @Override
+    @Transactional
+    public void deleteRequest(UUID requestId) {
+        requestRepository.deleteById(requestId);
+    }
+
     private RequestDto processDecision(UUID requestId, UUID actorId, String comment, ApprovalActionType actionType, boolean rejection) {
         Request request = requestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Request not found"));

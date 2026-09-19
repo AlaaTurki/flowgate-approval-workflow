@@ -77,6 +77,8 @@
                 <div class="row-actions">
                   <span class="status" [ngClass]="request.status.toLowerCase().replace(' ', '-')">{{ request.status }}</span>
                   <button class="small-link" type="button" (click)="viewDetails(request.rawId ?? request.id)">View</button>
+                  <button *ngIf="request.status === 'Draft'" class="small-link" type="button" (click)="editRequest(request)">Edit</button>
+                  <button class="small-link danger" type="button" (click)="confirmDelete(request)">Delete</button>
                 </div>
               </td>
             </tr>

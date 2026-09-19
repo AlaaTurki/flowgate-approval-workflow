@@ -17,4 +17,9 @@ public interface RequestService {
     RequestDto approveRequest(UUID requestId, UUID actorId, String comment);
     RequestDto rejectRequest(UUID requestId, UUID actorId, String comment);
     DashboardStatsDto getDashboardStats(UUID userId);
+
+    // additional CRUD
+    List<RequestDto> listAllRequests();
+    RequestDto updateRequest(UUID requestId, CreateRequestRequest request);
+    void deleteRequest(UUID requestId);
 }

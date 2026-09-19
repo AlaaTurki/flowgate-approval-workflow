@@ -37,6 +37,7 @@ export class EmployeeDashboardComponent implements OnInit {
  selectedDetail: RequestDetailDto | null = null;
  isLoading = false;
  detailLoading = false;
+ editingId: string | null = null;
  readonly stats = {
    open: 0,
    approved: 0,
@@ -121,6 +122,28 @@ export class EmployeeDashboardComponent implements OnInit {
    }
 
    this.isLoading = true;
+   if (this.editingId) {
+     this.api.updateRequest(this.editingId, { requestTypeId, title, description }).subscribe({
+       next: () => {
+         this.editingId = null;
+         this.form.reset({
+           title: '',
+           requestTypeId: this.requestTypes[0]?.id ?? '',
+           amount: '250.00',
+           description: '',
+         });
+         this.loadRequests();
+         this.loadStats();
+         this.isLoading = false;
+       },
+       error: () => {
+         this.isLoading = false;
+         window.alert('Unable to update the request.');
+       },
+     });
+     return;
+   }
+
    this.api.createRequest({ requestTypeId, title, description }).subscribe({
      next: () => {
        this.form.reset({
@@ -137,6 +160,28 @@ export class EmployeeDashboardComponent implements OnInit {
        this.isLoading = false;
        window.alert('Unable to submit the request.');
      },
+   });
+ }
+
+ editRequest(item: EmployeeRequest): void {
+   // populate form for inline edit (title/description)
+   this.editingId = item.rawId ?? item.id;
+   this.form.patchValue({ title: item.title, description: '' });
+   // focus the form
+   this.activeNav = 'My requests';
+   document.getElementById('new-request-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+   window.alert('Edit mode: adjust form and submit to update the request.');
+ }
+
+ confirmDelete(item: EmployeeRequest): void {
+   if (!confirm('Delete this request? This action cannot be undone.')) return;
+   this.api.deleteRequest(item.rawId ?? item.id).subscribe({
+     next: () => {
+       this.loadRequests();
+       this.loadStats();
+       window.alert('Request deleted.');
+     },
+     error: () => window.alert('Unable to delete the request.'),
    });
  }
 

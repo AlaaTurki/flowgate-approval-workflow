@@ -36,10 +36,30 @@ public class WorkflowController {
         return ResponseEntity.status(HttpStatus.CREATED).body(workflowService.createRequestType(request));
     }
 
+    @PutMapping("/request-types/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<RequestTypeDto> updateRequestType(@PathVariable UUID id, @Valid @RequestBody CreateRequestTypeRequest request) {
+        return ResponseEntity.ok(workflowService.updateRequestType(id, request));
+    }
+
+    @DeleteMapping("/request-types/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteRequestType(@PathVariable UUID id) {
+        workflowService.deleteRequestType(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @PostMapping("/request-types/{requestTypeId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<WorkflowDto> createWorkflow(@PathVariable UUID requestTypeId,
                                                     @Valid @RequestBody CreateWorkflowRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(workflowService.createWorkflow(requestTypeId, request));
+    }
+
+    @DeleteMapping("/workflows/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteWorkflow(@PathVariable UUID id) {
+        workflowService.deleteWorkflow(id);
+        return ResponseEntity.noContent().build();
     }
 }

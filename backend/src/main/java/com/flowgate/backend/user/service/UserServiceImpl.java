@@ -69,4 +69,21 @@ public class UserServiceImpl implements UserService {
         for (User u : all) dtos.add(userMapper.toDto(u));
         return dtos;
     }
+
+    @Override
+    public UserDto updateUser(java.util.UUID id, UserDto dto) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        user.setFullName(dto.getFullName());
+        user.setEmail(dto.getEmail());
+        user.setEnabled(dto.isEnabled());
+        User saved = userRepository.save(user);
+        return userMapper.toDto(saved);
+    }
+
+    @Override
+    public void deleteUser(java.util.UUID id) {
+        userRepository.deleteById(id);
+    }
 }
+

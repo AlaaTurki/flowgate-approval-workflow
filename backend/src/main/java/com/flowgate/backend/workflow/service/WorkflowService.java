@@ -11,6 +11,9 @@ import java.util.UUID;
 public interface WorkflowService {
     RequestTypeDto createRequestType(CreateRequestTypeRequest request);
     List<RequestTypeDto> getRequestTypes();
+    RequestTypeDto updateRequestType(UUID id, CreateRequestTypeRequest request);
+    void deleteRequestType(UUID id);
     WorkflowDto createWorkflow(UUID requestTypeId, CreateWorkflowRequest request);
     List<WorkflowDto> getWorkflowsForType(UUID requestTypeId);
+    void deleteWorkflow(UUID workflowId);
 }

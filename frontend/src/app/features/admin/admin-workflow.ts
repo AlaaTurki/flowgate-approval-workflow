@@ -62,6 +62,45 @@ export class AdminWorkflowComponent implements OnInit {
     this.loadUsers();
   }
 
+  createNewWorkflow(): void {
+    this.selectedWorkflowName = null;
+    this.form.reset({
+      typeName: '',
+      description: '',
+      steps: [
+        { name: 'Manager approval', approver: 'ROLE_MANAGER', requiredComment: true },
+      ],
+    });
+    this.activeNav = 'Workflow builder';
+  }
+
+  editUser(user: UserDto): void {
+    const newFull = window.prompt('Full name', user.fullName ?? '');
+    if (newFull === null) return;
+    const newEmail = window.prompt('Email', user.email ?? '');
+    if (newEmail === null) return;
+
+    this.api.updateUser(user.id, { fullName: newFull, email: newEmail, enabled: user.enabled }).subscribe({
+      next: (updated) => {
+        const idx = this.users.findIndex((u) => u.id === updated.id);
+        if (idx >= 0) this.users[idx] = updated;
+        window.alert('User updated.');
+      },
+      error: () => window.alert('Unable to update user.'),
+    });
+  }
+
+  confirmDeleteUser(user: UserDto): void {
+    if (!window.confirm(`Delete user ${user.username}? This action cannot be undone.`)) return;
+    this.api.deleteUser(user.id).subscribe({
+      next: () => {
+        this.users = this.users.filter((u) => u.id !== user.id);
+        window.alert('User deleted.');
+      },
+      error: () => window.alert('Unable to delete user.'),
+    });
+  }
+
   selectNav(name: string): void {
     this.activeNav = name;
   }

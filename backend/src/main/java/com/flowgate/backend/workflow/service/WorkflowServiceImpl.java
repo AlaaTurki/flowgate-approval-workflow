@@ -98,6 +98,36 @@ public class WorkflowServiceImpl implements WorkflowService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional
+    public RequestTypeDto updateRequestType(UUID id, CreateRequestTypeRequest request) {
+        RequestType type = requestTypeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Request type not found"));
+        type.setName(request.getName());
+        type.setDescription(request.getDescription());
+        RequestType saved = requestTypeRepository.save(type);
+        return toDto(saved);
+    }
+
+    @Override
+    @Transactional
+    public void deleteRequestType(UUID id) {
+        RequestType type = requestTypeRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Request type not found"));
+        // remove related workflows first
+        List<Workflow> workflows = workflowRepository.findByRequestTypeId(id);
+        if (workflows != null && !workflows.isEmpty()) {
+            workflowRepository.deleteAll(workflows);
+        }
+        requestTypeRepository.delete(type);
+    }
+
+    @Override
+    @Transactional
+    public void deleteWorkflow(UUID workflowId) {
+        workflowRepository.deleteById(workflowId);
+    }
+
     private RequestTypeDto toDto(RequestType requestType) {
         return RequestTypeDto.builder()
                 .id(requestType.getId())

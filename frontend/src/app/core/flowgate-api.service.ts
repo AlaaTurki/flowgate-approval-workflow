@@ -92,12 +92,32 @@ export class FlowgateApiService {
     return this.http.get<UserDto[]>(`${this.baseUrl}/api/users`);
   }
 
+  updateUser(id: string, payload: Partial<UserDto>) {
+    return this.http.put<UserDto>(`${this.baseUrl}/api/users/${id}`, payload);
+  }
+
+  deleteUser(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/api/users/${id}`);
+  }
+
   createRequestType(payload: CreateRequestTypePayload) {
     return this.http.post<RequestTypeDto>(`${this.baseUrl}/api/workflows/request-types`, payload);
   }
 
+  updateRequestType(id: string, payload: CreateRequestTypePayload) {
+    return this.http.put<RequestTypeDto>(`${this.baseUrl}/api/workflows/request-types/${id}`, payload);
+  }
+
+  deleteRequestType(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/api/workflows/request-types/${id}`);
+  }
+
   createWorkflow(requestTypeId: string, payload: CreateWorkflowPayload) {
     return this.http.post<any>(`${this.baseUrl}/api/workflows/request-types/${requestTypeId}`, payload);
+  }
+
+  deleteWorkflow(id: string) {
+    return this.http.delete<void>(`${this.baseUrl}/api/workflows/workflows/${id}`);
   }
 
   createRequest(payload: CreateRequestPayload) {
@@ -110,6 +130,14 @@ export class FlowgateApiService {
 
   getRequestDetail(requestId: string) {
     return this.http.get<RequestDetailDto>(`${this.baseUrl}/api/requests/${requestId}`);
+  }
+
+  updateRequest(requestId: string, payload: CreateRequestPayload) {
+    return this.http.put<RequestDto>(`${this.baseUrl}/api/requests/${requestId}`, payload);
+  }
+
+  deleteRequest(requestId: string) {
+    return this.http.delete<void>(`${this.baseUrl}/api/requests/${requestId}`);
   }
 
   getDashboardStats() {

@@ -29,7 +29,10 @@
         <p class="eyebrow subtle">Workflow studio</p>
         <h3>Design the approval flow your teams need.</h3>
       </div>
-      <button type="button" (click)="saveDraft()">Save draft</button>
+      <div style="display:flex;gap:0.6rem;">
+        <button type="button" (click)="createNewWorkflow()">New workflow</button>
+        <button type="button" (click)="saveDraft()">Save draft</button>
+      </div>
     </section>
 
     <div class="content-grid" *ngIf="activeNav === 'Workflow builder'">
@@ -119,24 +122,31 @@
         <span class="tag">{{ users.length }} total</span>
       </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Username</th>
-            <th>Email</th>
-            <th>Full name</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let user of users">
-            <td>{{ user.username }}</td>
-            <td>{{ user.email }}</td>
-            <td>{{ user.fullName }}</td>
-            <td>{{ user.enabled ? 'Active' : 'Disabled' }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div class="table-wrap">
+        <table class="users-table">
+          <thead>
+            <tr>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Full name</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let user of users">
+              <td>{{ user.username }}</td>
+              <td>{{ user.email }}</td>
+              <td>{{ user.fullName }}</td>
+              <td>{{ user.enabled ? 'Active' : 'Disabled' }}</td>
+              <td>
+                <button class="mini-btn" type="button" (click)="editUser(user)">Edit</button>
+                <button class="mini-btn" type="button" (click)="confirmDeleteUser(user)">Delete</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
     <section class="panel" *ngIf="activeNav === 'Policies'">
