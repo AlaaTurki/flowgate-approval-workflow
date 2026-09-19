@@ -1,0 +1,115 @@
+<main class="workspace-shell">
+  <aside class="sidebar">
+    <div class="brand-block">
+      <div class="brand-mark">F</div>
+      <div>
+        <p class="eyebrow">FlowGate</p>
+        <h2>Employee portal</h2>
+      </div>
+    </div>
+
+    <nav class="nav-panel">
+      <button class="nav-pill" [class.active]="activeNav === 'My requests'" type="button" (click)="selectNav('My requests')">My requests</button>
+      <button class="nav-pill" [class.active]="activeNav === 'Approvals'" type="button" (click)="selectNav('Approvals')">Approvals</button>
+      <button class="nav-pill" [class.active]="activeNav === 'History'" type="button" (click)="selectNav('History')">History</button>
+    </nav>
+  </aside>
+
+  <section class="content-panel">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow subtle">Welcome back</p>
+        <h1>{{ username }}</h1>
+      </div>
+      <button class="logout-btn" type="button" (click)="logout()">Logout</button>
+    </header>
+
+    <section class="hero-card">
+      <div>
+        <p class="eyebrow subtle">Overview</p>
+        <h3>Keep your requests moving.</h3>
+      </div>
+      <button type="button" (click)="focusNewRequest()">New request</button>
+    </section>
+
+    <section class="stats-grid">
+      <article class="stat-card">
+        <span>Open</span>
+        <strong>3</strong>
+        <small>2 in review</small>
+      </article>
+      <article class="stat-card">
+        <span>Approved</span>
+        <strong>12</strong>
+        <small>+4 this month</small>
+      </article>
+      <article class="stat-card">
+        <span>Avg. time</span>
+        <strong>2.4d</strong>
+        <small>faster than last month</small>
+      </article>
+    </section>
+
+    <div class="content-grid">
+      <section class="panel">
+        <div class="panel-header">
+          <h2>My requests</h2>
+          <span class="tag">{{ requests.length }} total</span>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Title</th>
+              <th>Type</th>
+              <th>Amount</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let request of requests">
+              <td>{{ request.id }}</td>
+              <td>{{ request.title }}</td>
+              <td>{{ request.type }}</td>
+              <td>{{ request.amount }}</td>
+              <td><span class="status" [ngClass]="request.status.toLowerCase().replace(' ', '-')">{{ request.status }}</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <aside class="panel form-panel">
+        <div class="panel-header">
+          <h2>New request</h2>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="submit()" class="request-form" id="new-request-form">
+          <label>
+            Title
+            <input formControlName="title" placeholder="Travel reimbursement" />
+          </label>
+
+          <label>
+            Request type
+            <select formControlName="requestTypeId">
+              <option *ngFor="let type of requestTypes" [value]="type.id">{{ type.name }}</option>
+            </select>
+          </label>
+
+          <label>
+            Amount
+            <input formControlName="amount" type="number" placeholder="250.00" />
+          </label>
+
+          <label>
+            Details
+            <textarea formControlName="description" rows="4" placeholder="Describe the request..."></textarea>
+          </label>
+
+          <button type="submit">Submit request</button>
+        </form>
+      </aside>
+    </div>
+  </section>
+</main>

@@ -26,7 +26,27 @@ export class AuthService {
         tap((response) => {
           localStorage.setItem(this.tokenKey, response.accessToken);
           this.userToken$.next(response.accessToken);
-          this.router.navigateByUrl('/dashboard');
+          this.router.navigateByUrl(this.getDashboardRoute());
+        }),
+        catchError((error) => {
+          this.clearSession();
+          return throwError(() => error);
+        })
+      );
+  }
+
+  register(username: string, email: string, fullName: string, password: string) {
+    return this.http
+      .post('http://localhost:9090/api/auth/register', {
+        username,
+        email,
+        fullName,
+        password,
+      })
+      .pipe(
+        tap(() => {
+          this.clearSession();
+          this.router.navigateByUrl('/login');
         }),
         catchError((error) => {
           this.clearSession();
@@ -68,6 +88,17 @@ export class AuthService {
     if (roles.includes('ROLE_MANAGER')) return 'MANAGER';
     if (roles.includes('ROLE_EMPLOYEE')) return 'EMPLOYEE';
     return 'EMPLOYEE';
+  }
+
+  getDashboardRoute(): string {
+    switch (this.getCurrentRole()) {
+      case 'ADMIN':
+        return '/admin';
+      case 'MANAGER':
+        return '/manager';
+      default:
+        return '/employee';
+    }
   }
 
   hasRole(role: string): boolean {

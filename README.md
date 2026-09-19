@@ -46,14 +46,14 @@ Local development helper files have been added to the repository.
 1. Start local database and pgAdmin:
 
    - docker compose up -d
-   - pgAdmin UI: http://localhost:8081 (login: admin@flowgate.local / admin)
-   - PostgreSQL: host=localhost port=5432 db=flowgate user=flowgate password=flowgatepass
+   - pgAdmin UI: http://localhost:8081 (login: admin@flowgate.com / admin)
+   - PostgreSQL: host=localhost port=5433 db=flowgate user=flowgate password=flowgatepass password=flowgatepass
 
 2. Backend (Spring Boot) — generated in `backend/`:
 
    - Configure application properties (see `backend/README-backend.md` for recommended env variables).
    - Build: mvn -f backend/pom.xml clean package
-   - Run: mvn -f backend spring-boot:run
+   - Run: SERVER_PORT=9090 mvn -f backend spring-boot:run
 
 3. Frontend (Angular) — not generated automatically in this run. To create the frontend locally:
 
@@ -61,7 +61,7 @@ Local development helper files have been added to the repository.
    - ng new frontend --standalone --routing --style=scss
    - cd frontend && npm install && ng serve
 
-4. After backend and database are running, open OpenAPI docs at http://localhost:8080/swagger-ui.html (backend default port) once the app is started.
+4. After backend and database are running, open OpenAPI docs at http://localhost:9090/swagger-ui.html once the app is started.
 
 More detailed environment and JWT configuration will be added as services are implemented.
 

@@ -1,0 +1,103 @@
+<main class="workspace-shell">
+  <aside class="sidebar">
+    <div class="brand-block">
+      <div class="brand-mark">F</div>
+      <div>
+        <p class="eyebrow">FlowGate</p>
+        <h2>Admin portal</h2>
+      </div>
+    </div>
+
+    <nav class="nav-panel">
+      <button class="nav-pill" [class.active]="activeNav === 'Workflow builder'" type="button" (click)="selectNav('Workflow builder')">Workflow builder</button>
+      <button class="nav-pill" [class.active]="activeNav === 'Users'" type="button" (click)="selectNav('Users')">Users</button>
+      <button class="nav-pill" [class.active]="activeNav === 'Policies'" type="button" (click)="selectNav('Policies')">Policies</button>
+    </nav>
+  </aside>
+
+  <section class="content-panel">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow subtle">Administration</p>
+        <h1>{{ username }}</h1>
+      </div>
+      <button class="logout-btn" type="button" (click)="logout()">Logout</button>
+    </header>
+
+    <section class="hero-card">
+      <div>
+        <p class="eyebrow subtle">Workflow studio</p>
+        <h3>Design the approval flow your teams need.</h3>
+      </div>
+      <button type="button" (click)="saveDraft()">Save draft</button>
+    </section>
+
+    <div class="content-grid">
+      <section class="panel builder-panel">
+        <div class="panel-header">
+          <h2>New workflow</h2>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="saveWorkflow()" class="workflow-form">
+          <label>
+            Request type name
+            <input formControlName="typeName" placeholder="Equipment Request" />
+          </label>
+
+          <label>
+            Description
+            <textarea formControlName="description" rows="3" placeholder="Describe the workflow purpose"></textarea>
+          </label>
+
+          <div class="step-list" formArrayName="steps">
+            <div class="step-item" *ngFor="let step of steps.controls; let i = index" [formGroupName]="i">
+              <div class="step-head">
+                <strong>Step {{ i + 1 }}</strong>
+                <button type="button" class="mini-btn" *ngIf="steps.length > 1" (click)="removeStep(i)">Remove</button>
+              </div>
+
+              <label>
+                Step name
+                <input formControlName="name" placeholder="Manager approval" />
+              </label>
+
+              <label>
+                Approver role
+                <select formControlName="approver">
+                  <option value="ROLE_MANAGER">Manager</option>
+                  <option value="ROLE_ADMIN">Admin</option>
+                  <option value="ROLE_EMPLOYEE">Employee</option>
+                </select>
+              </label>
+
+              <label class="checkbox-row">
+                <input type="checkbox" formControlName="requiredComment" />
+                Requires comment
+              </label>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button type="button" class="secondary" (click)="addStep()">Add step</button>
+            <button type="submit">Create workflow</button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="panel templates-panel">
+        <div class="panel-header">
+          <h2>Existing workflows</h2>
+        </div>
+
+        <div class="template-list">
+          <article class="template-card" *ngFor="let template of workflowTemplates">
+            <h3>{{ template.name }}</h3>
+            <ul>
+              <li *ngFor="let step of template.steps">{{ step }}</li>
+            </ul>
+          </article>
+        </div>
+      </aside>
+    </div>
+  </section>
+</main>

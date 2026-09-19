@@ -1,0 +1,66 @@
+<main class="workspace-shell">
+  <aside class="sidebar">
+    <div class="brand-block">
+      <div class="brand-mark">F</div>
+      <div>
+        <p class="eyebrow">FlowGate</p>
+        <h2>Manager portal</h2>
+      </div>
+    </div>
+
+    <nav class="nav-panel">
+      <button class="nav-pill" [class.active]="activeNav === 'Inbox'" type="button" (click)="selectNav('Inbox')">Inbox</button>
+      <button class="nav-pill" [class.active]="activeNav === 'Team requests'" type="button" (click)="selectNav('Team requests')">Team requests</button>
+      <button class="nav-pill" [class.active]="activeNav === 'Reports'" type="button" (click)="selectNav('Reports')">Reports</button>
+    </nav>
+  </aside>
+
+  <section class="content-panel">
+    <header class="topbar">
+      <div>
+        <p class="eyebrow subtle">Approval center</p>
+        <h1>{{ username }}</h1>
+      </div>
+      <button class="logout-btn" type="button" (click)="logout()">Logout</button>
+    </header>
+
+    <section class="hero-card">
+      <div>
+        <p class="eyebrow subtle">Pending decisions</p>
+        <h3>{{ queue.length }} requests need attention</h3>
+      </div>
+      <button type="button" (click)="exportReview()">Export review</button>
+    </section>
+
+    <section class="list-panel">
+      <div class="panel-header">
+        <h2>Approval inbox</h2>
+        <span class="tag">Live queue</span>
+      </div>
+
+      <div class="request-list">
+        <article class="request-card" *ngFor="let item of queue">
+          <div class="request-head">
+            <div>
+              <p class="muted">{{ item.id }}</p>
+              <h3>{{ item.request }}</h3>
+            </div>
+            <span class="priority" [ngClass]="item.priority.toLowerCase()">{{ item.priority }}</span>
+          </div>
+
+          <div class="meta-row">
+            <span>Employee: {{ item.employee }}</span>
+            <span>Type: {{ item.type }}</span>
+            <span>Amount: {{ item.amount }}</span>
+            <span>Due: {{ item.due }}</span>
+          </div>
+
+          <div class="button-row">
+            <button class="approve" type="button" (click)="approve(item)">Approve</button>
+            <button class="reject" type="button" (click)="reject(item)">Reject</button>
+          </div>
+        </article>
+      </div>
+    </section>
+  </section>
+</main>

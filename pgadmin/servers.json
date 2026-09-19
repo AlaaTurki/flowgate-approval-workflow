@@ -1,0 +1,16 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "Flowgate Postgres",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "flowgate",
+      "Username": "flowgate",
+      "Password": "flowgatepass",
+      "SSLMode": "prefer",
+      "Shared": true
+    }
+  }
+}
+
