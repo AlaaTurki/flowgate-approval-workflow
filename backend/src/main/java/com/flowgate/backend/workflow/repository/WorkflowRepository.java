@@ -9,12 +9,19 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface WorkflowRepository extends JpaRepository<Workflow, UUID> {
-    @EntityGraph(attributePaths = "steps")
+    @Override
+    @EntityGraph(attributePaths = {"requestType", "steps"})
+    List<Workflow> findAll();
+
+    @EntityGraph(attributePaths = {"requestType", "steps"})
     Optional<Workflow> findFirstByRequestTypeIdAndActiveTrue(UUID requestTypeId);
 
-    @EntityGraph(attributePaths = "steps")
+    @EntityGraph(attributePaths = {"requestType", "steps"})
+    List<Workflow> findByRequestTypeIdAndActiveTrue(UUID requestTypeId);
+
+    @EntityGraph(attributePaths = {"requestType", "steps"})
     Optional<Workflow> findFirstByRequestTypeId(UUID requestTypeId);
 
-    @EntityGraph(attributePaths = "steps")
+    @EntityGraph(attributePaths = {"requestType", "steps"})
     List<Workflow> findByRequestTypeId(UUID requestTypeId);
 }

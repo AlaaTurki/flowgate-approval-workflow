@@ -35,6 +35,7 @@ public class WorkflowStep {
     @Column(name = "approver_user_id", columnDefinition = "uuid")
     private UUID approverUserId;
 
+    @Builder.Default
     @Column(name = "requires_comment", nullable = false)
     private boolean requiresComment = false;
 }

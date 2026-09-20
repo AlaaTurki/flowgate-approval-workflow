@@ -1,5 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
+import { environment } from '../../environments/environment';
 
 export interface RequestTypeDto {
   id: string;
@@ -98,7 +99,7 @@ export interface CreateRequestTypePayload {
 
 @Injectable({ providedIn: 'root' })
 export class FlowgateApiService {
-  private readonly baseUrl = 'http://localhost:9090';
+  private readonly baseUrl = environment.apiUrl;
 
   constructor(private readonly http: HttpClient) {}
 
@@ -161,6 +162,10 @@ export class FlowgateApiService {
 
   updateRequest(requestId: string, payload: CreateRequestPayload) {
     return this.http.put<RequestDto>(`${this.baseUrl}/api/requests/${requestId}`, payload);
+  }
+
+  cancelRequest(requestId: string, comment?: string) {
+    return this.http.post<RequestDto>(`${this.baseUrl}/api/requests/${requestId}/cancel`, { comment: comment ?? 'Cancelled by user' });
   }
 
   deleteRequest(requestId: string) {

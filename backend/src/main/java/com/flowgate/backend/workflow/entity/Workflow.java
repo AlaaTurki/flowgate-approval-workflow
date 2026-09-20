@@ -29,6 +29,7 @@ public class Workflow {
     @JoinColumn(name = "request_type_id", nullable = false)
     private RequestType requestType;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean active = true;
 

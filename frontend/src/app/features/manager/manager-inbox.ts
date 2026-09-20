@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth.service';
 import { FlowgateApiService, RequestDto, RequestDetailDto } from '../../core/flowgate-api.service';
 
@@ -16,7 +17,7 @@ interface ApprovalItem {
 @Component({
   selector: 'app-manager-inbox',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, FormsModule],
   templateUrl: './manager-inbox.html',
   styleUrl: './manager-inbox.scss',
 })
@@ -30,6 +31,7 @@ export class ManagerInboxComponent implements OnInit {
    approvedToday: 0,
    avgSla: '0.0d',
   };
+  workflowTemplates: Array<{ id: string; name: string }> = [];
 
   constructor(
    private readonly authService: AuthService,
@@ -66,7 +68,19 @@ export class ManagerInboxComponent implements OnInit {
   ngOnInit(): void {
    this.loadQueue();
    this.loadDashboardStats();
+   this.loadRequestTypes();
    this.loadHistory();
+  }
+
+  private loadRequestTypes(): void {
+   this.api.getRequestTypes().subscribe({
+     next: (types) => {
+       this.workflowTemplates = types.map((type) => ({ id: type.id, name: type.name }));
+     },
+     error: () => {
+       this.workflowTemplates = [];
+     },
+   });
   }
 
   private loadHistory(): void {
@@ -115,7 +129,7 @@ export class ManagerInboxComponent implements OnInit {
   }
 
   exportReview(): void {
-   window.alert('Review export started.');
+   console.info('Review export requested.');
   }
 
   approve(item: ApprovalItem): void {
@@ -124,16 +138,16 @@ export class ManagerInboxComponent implements OnInit {
      next: () => {
        this.loadQueue();
        this.loadDashboardStats();
-       window.alert('Request approved.');
+       this.loadHistory();
      },
-     error: () => window.alert('Unable to approve this request.'),
+     error: () => console.error('Unable to approve this request.'),
    });
   }
 
   reject(item: ApprovalItem): void {
    const comment = window.prompt('Reason for rejection', 'Please review the details and resubmit.');
    if (!comment || !comment.trim()) {
-     window.alert('A rejection comment is required.');
+     console.warn('A rejection comment is required.');
      return;
    }
 
@@ -141,9 +155,9 @@ export class ManagerInboxComponent implements OnInit {
      next: () => {
        this.loadQueue();
        this.loadDashboardStats();
-       window.alert('Request rejected.');
+       this.loadHistory();
      },
-     error: () => window.alert('Unable to reject this request.'),
+     error: () => console.error('Unable to reject this request.'),
    });
   }
 
@@ -153,7 +167,7 @@ export class ManagerInboxComponent implements OnInit {
      next: (detail) => {
        this.selectedDetail = detail;
      },
-     error: () => window.alert('Unable to load request details.'),
+     error: () => console.error('Unable to load request details.'),
    });
   }
 

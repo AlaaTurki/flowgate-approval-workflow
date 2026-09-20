@@ -154,7 +154,7 @@
         <div style="display:flex;gap:0.6rem;align-items:center;">
           <select [(ngModel)]="filter.requestTypeId">
             <option value="">All types</option>
-            <option *ngFor="let t of workflowTemplates" [value]="t.name">{{ t.name }}</option>
+            <option *ngFor="let t of workflowTemplates" [value]="t.id">{{ t.name }}</option>
           </select>
           <select [(ngModel)]="filter.status">
             <option value="">Any status</option>

@@ -174,14 +174,13 @@ export class EmployeeDashboardComponent implements OnInit {
  }
 
  confirmDelete(item: EmployeeRequest): void {
-   if (!confirm('Delete this request? This action cannot be undone.')) return;
-   this.api.deleteRequest(item.rawId ?? item.id).subscribe({
+   if (!confirm('Cancel this request? It will stay in the audit trail.')) return;
+   this.api.cancelRequest(item.rawId ?? item.id, 'Cancelled by employee').subscribe({
      next: () => {
        this.loadRequests();
        this.loadStats();
-       window.alert('Request deleted.');
      },
-     error: () => window.alert('Unable to delete the request.'),
+     error: () => console.error('Unable to cancel the request.'),
    });
  }
 

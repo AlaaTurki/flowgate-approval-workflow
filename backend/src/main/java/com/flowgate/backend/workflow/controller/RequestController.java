@@ -17,6 +17,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -74,18 +75,21 @@ public class RequestController {
     public ResponseEntity<RequestDto> updateRequest(@PathVariable UUID id,
                                                      @Valid @RequestBody CreateRequestRequest requestBody,
                                                      @AuthenticationPrincipal UserDetails userDetails) {
-        // for simplicity allow owner or admin to update; service enforces closed-state rule
-        RequestDto updated = requestService.updateRequest(id, requestBody);
+        User currentUser = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        RequestDto updated = requestService.updateRequest(id, currentUser.getId(), requestBody);
         return ResponseEntity.ok(updated);
     }
 
-    @DeleteMapping("/{id}")
+    @PostMapping("/{id}/cancel")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
-    public ResponseEntity<Void> deleteRequest(@PathVariable UUID id,
-                                              @AuthenticationPrincipal UserDetails userDetails) {
-        // basic delete; production should check ownership or admin privileges
-        requestService.deleteRequest(id);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<RequestDto> cancelRequest(@PathVariable UUID id,
+                                                  @RequestBody(required = false) Map<String, String> payload,
+                                                  @AuthenticationPrincipal UserDetails userDetails) {
+        User currentUser = userRepository.findByUsername(userDetails.getUsername())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        String comment = payload != null ? payload.getOrDefault("comment", "Cancelled") : "Cancelled";
+        return ResponseEntity.ok(requestService.cancelRequest(id, currentUser.getId(), comment));
     }
 
     @GetMapping("/dashboard")

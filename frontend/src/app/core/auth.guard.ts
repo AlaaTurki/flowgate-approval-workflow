@@ -6,7 +6,11 @@ export const authGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  return authService.isAuthenticated() ? true : router.createUrlTree(['/login']);
+  if (!authService.isAuthenticated()) {
+    return router.createUrlTree(['/login']);
+  }
+
+  return authService.hasValidToken() ? true : router.createUrlTree(['/login']);
 };
 
 export const roleGuard = (expectedRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE'): CanActivateFn => {
@@ -14,13 +18,13 @@ export const roleGuard = (expectedRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE'): CanAc
     const authService = inject(AuthService);
     const router = inject(Router);
 
-    if (!authService.isAuthenticated()) {
+    if (!authService.isAuthenticated() || !authService.hasValidToken()) {
+      authService.logout();
       return router.createUrlTree(['/login']);
     }
 
     const currentRole = authService.getCurrentRole();
-    return currentRole === expectedRole
-      ? true
-      : router.createUrlTree([authService.getDashboardRoute()]);
+    const allows = expectedRole === 'ADMIN' ? currentRole === 'ADMIN' : expectedRole === 'MANAGER' ? currentRole === 'MANAGER' || currentRole === 'ADMIN' : currentRole === 'EMPLOYEE' || currentRole === 'MANAGER' || currentRole === 'ADMIN';
+    return allows ? true : router.createUrlTree([authService.getDashboardRoute()]);
   };
 };

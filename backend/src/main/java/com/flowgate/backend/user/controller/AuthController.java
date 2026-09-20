@@ -43,11 +43,11 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<?> login(@Validated @RequestBody LoginRequest req) {
         User user = userRepository.findByUsername(req.getUsername()).orElse(null);
-        if (user != null && passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
-            String token = jwtService.generateToken(user);
-            return ResponseEntity.ok(new AuthResponse(token, "Bearer"));
+        if (user == null || !user.isEnabled() || !passwordEncoder.matches(req.getPassword(), user.getPasswordHash())) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid credentials"));
         }
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(Map.of("message", "Invalid credentials"));
+        String token = jwtService.generateToken(user);
+        return ResponseEntity.ok(new AuthResponse(token, "Bearer"));
     }
 }

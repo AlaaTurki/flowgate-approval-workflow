@@ -13,14 +13,18 @@ import java.util.UUID;
 public interface RequestRepository extends JpaRepository<Request, UUID> {
     @Override
     @EntityGraph(attributePaths = {"requestType", "submittedBy", "actions", "actions.actor"})
+    List<Request> findAll();
+
+    @Override
+    @EntityGraph(attributePaths = {"requestType", "submittedBy", "workflow", "workflow.steps"})
     Optional<Request> findById(UUID id);
 
     @EntityGraph(attributePaths = {"requestType", "submittedBy", "actions", "actions.actor"})
     List<Request> findBySubmittedBy(User user);
 
-    @EntityGraph(attributePaths = {"requestType", "submittedBy", "actions", "actions.actor"})
+    @EntityGraph(attributePaths = {"requestType", "submittedBy", "workflow", "workflow.steps"})
     List<Request> findByStatus(RequestStatus status);
 
-    @EntityGraph(attributePaths = {"requestType", "submittedBy"})
+    @EntityGraph(attributePaths = {"requestType", "submittedBy", "workflow", "workflow.steps"})
     List<Request> findBySubmittedByAndStatus(User user, RequestStatus status);
 }

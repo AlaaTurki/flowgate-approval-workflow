@@ -1,9 +1,12 @@
 package com.flowgate.backend.user.controller;
 
+import com.flowgate.backend.user.dto.UpdateUserRequest;
 import com.flowgate.backend.user.dto.UserDto;
 import com.flowgate.backend.user.service.UserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,30 +24,32 @@ public class UserController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserDto>> listUsers() {
         return ResponseEntity.ok(userService.findAll());
     }
 
     @PostMapping
-    // allow only admins to create users via admin UI
-    // (registration flow may exist separately for public signup)
-    // here we accept the same RegisterRequest DTO used by registration
-    public ResponseEntity<UserDto> createUser(@RequestBody com.flowgate.backend.user.dto.RegisterRequest req) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserDto> createUser(@Valid @RequestBody com.flowgate.backend.user.dto.RegisterRequest req) {
         UserDto created = userService.register(req);
         return ResponseEntity.status(201).body(created);
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserDto> getUser(@PathVariable UUID id) {
         return userService.findById(id).map(ResponseEntity::ok).orElseGet(() -> ResponseEntity.notFound().build());
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UserDto> updateUser(@PathVariable UUID id, @RequestBody UserDto dto) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<UserDto> updateUser(@PathVariable UUID id, @Valid @RequestBody UpdateUserRequest dto) {
         return ResponseEntity.ok(userService.updateUser(id, dto));
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable UUID id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();

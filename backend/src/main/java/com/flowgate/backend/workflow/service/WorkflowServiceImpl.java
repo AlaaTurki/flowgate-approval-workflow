@@ -49,6 +49,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RequestTypeDto> getRequestTypes() {
         return requestTypeRepository.findAll().stream()
                 .sorted(Comparator.comparing(RequestType::getCreatedAt).reversed())
@@ -64,6 +65,11 @@ public class WorkflowServiceImpl implements WorkflowService {
 
         if (request.getSteps() == null || request.getSteps().isEmpty()) {
             throw new IllegalArgumentException("A workflow requires at least one approval step");
+        }
+
+        List<Workflow> existing = workflowRepository.findByRequestTypeIdAndActiveTrue(requestTypeId);
+        for (Workflow activeWorkflow : existing) {
+            activeWorkflow.setActive(false);
         }
 
         Workflow workflow = Workflow.builder()
@@ -90,6 +96,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<WorkflowDto> getWorkflowsForType(UUID requestTypeId) {
         return workflowRepository.findAll().stream()
                 .filter(workflow -> workflow.getRequestType() != null && workflow.getRequestType().getId().equals(requestTypeId))
@@ -99,6 +106,7 @@ public class WorkflowServiceImpl implements WorkflowService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<WorkflowDto> searchWorkflows(String query) {
         if (query == null || query.isBlank()) {
             return workflowRepository.findAll().stream()

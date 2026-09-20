@@ -55,6 +55,12 @@ export class AdminWorkflowComponent implements OnInit {
         }),
       ]),
     });
+    this.userForm = this.fb.nonNullable.group({
+      username: ['', Validators.required],
+      fullName: [''],
+      email: ['', [Validators.required, Validators.email]],
+      password: [''],
+    });
   }
 
   ngOnInit(): void {
@@ -68,7 +74,7 @@ export class AdminWorkflowComponent implements OnInit {
         this.workflowTemplates = workflows.map((w) => ({ name: w.name, steps: (w.steps || []).map((s) => s.name) }));
       },
       error: () => {
-        // leave existing list unchanged on error
+        this.workflowTemplates = [];
       },
     });
   }
@@ -89,12 +95,7 @@ export class AdminWorkflowComponent implements OnInit {
   showUserModal = false;
   editingUser: UserDto | null = null;
   selectedRoles: string[] = [];
-  userForm = this.fb.nonNullable.group({
-    username: ['', Validators.required],
-    fullName: [''],
-    email: ['', [Validators.required, Validators.email]],
-    password: [''],
-  });
+  userForm: FormGroup;
 
   openCreateUser(): void {
     this.editingUser = null;
@@ -175,23 +176,13 @@ export class AdminWorkflowComponent implements OnInit {
 
   // lightweight stubs to extract roles from user DTO if present
   
-  impersonate(user: UserDto): void {
-    // lightweight admin impersonation: set username in local storage and reload
-    if (!confirm(`Impersonate ${user.username}? You will be logged out as ${this.username}.`)) return;
-    localStorage.setItem('impersonate', user.username);
-    window.alert('Impersonation flag set (dev). Please log out and log in as the impersonated user.');
-  }
-
-  // keep existing helper functions below
-  
-
   selectNav(name: string): void {
     this.activeNav = name;
   }
 
   saveDraft(): void {
     this.form.markAsDirty();
-    window.alert('Workflow draft saved locally.');
+    console.info('Workflow draft updated locally.');
   }
 
   handleDetails(type: WorkflowSummary): void {
@@ -286,18 +277,25 @@ export class AdminWorkflowComponent implements OnInit {
   }
 
   private loadRequestTypes(): void {
-    this.api.getRequestTypes().subscribe({
-      next: (types) => {
-        this.workflowTemplates = types.map((type) => ({
-          name: type.name,
-          steps: [type.description ?? 'Configured approval'],
+    this.api.searchWorkflows('').subscribe({
+      next: (workflows) => {
+        this.workflowTemplates = workflows.map((workflow) => ({
+          name: workflow.name,
+          steps: (workflow.steps ?? []).map((step) => step.name),
         }));
       },
       error: () => {
-        this.workflowTemplates = [
-          { name: 'Expense Reimbursement', steps: ['Manager approval', 'Finance review'] },
-          { name: 'Purchase Request', steps: ['Department head', 'Finance review'] },
-        ];
+        this.api.getRequestTypes().subscribe({
+          next: (types) => {
+            this.workflowTemplates = types.map((type) => ({
+              name: type.name,
+              steps: [type.description ?? 'Configured approval'],
+            }));
+          },
+          error: () => {
+            this.workflowTemplates = [];
+          },
+        });
       },
     });
   }

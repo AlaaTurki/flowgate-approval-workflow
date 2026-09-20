@@ -12,6 +12,6 @@ public interface UserService {
     Optional<UserDto> findByUsername(String username);
     Optional<UserDto> findById(UUID id);
     List<UserDto> findAll();
-    UserDto updateUser(UUID id, com.flowgate.backend.user.dto.UserDto dto);
+    UserDto updateUser(UUID id, com.flowgate.backend.user.dto.UpdateUserRequest dto);
     void deleteUser(UUID id);
 }

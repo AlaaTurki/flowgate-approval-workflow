@@ -1,6 +1,7 @@
 package com.flowgate.backend.user.service;
 
 import com.flowgate.backend.user.dto.RegisterRequest;
+import com.flowgate.backend.user.dto.UpdateUserRequest;
 import com.flowgate.backend.user.dto.UserDto;
 import com.flowgate.backend.user.entity.Role;
 import com.flowgate.backend.user.entity.User;
@@ -71,12 +72,21 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public UserDto updateUser(java.util.UUID id, UserDto dto) {
+    public UserDto updateUser(java.util.UUID id, UpdateUserRequest dto) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        user.setFullName(dto.getFullName());
-        user.setEmail(dto.getEmail());
-        user.setEnabled(dto.isEnabled());
+        if (dto.getUsername() != null && !dto.getUsername().isBlank()) {
+            user.setUsername(dto.getUsername());
+        }
+        if (dto.getFullName() != null) {
+            user.setFullName(dto.getFullName());
+        }
+        if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
+            user.setEmail(dto.getEmail());
+        }
+        if (dto.getEnabled() != null) {
+            user.setEnabled(dto.getEnabled());
+        }
         User saved = userRepository.save(user);
         return userMapper.toDto(saved);
     }

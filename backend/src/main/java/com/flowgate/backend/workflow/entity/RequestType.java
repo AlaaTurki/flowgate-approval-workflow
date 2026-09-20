@@ -28,6 +28,7 @@ public class RequestType {
     @Column(columnDefinition = "text")
     private String description;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean active = true;
 

@@ -12,6 +12,5 @@ import lombok.NoArgsConstructor;
 @Builder
 public class ApprovalDecisionRequest {
 
-    @NotBlank
     private String comment;
 }

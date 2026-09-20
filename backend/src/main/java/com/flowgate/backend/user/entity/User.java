@@ -32,15 +32,17 @@ public class User {
     @Column(name = "full_name")
     private String fullName;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean enabled = true;
 
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 
+    @Builder.Default
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(name = "user_roles",
             joinColumns = @JoinColumn(name = "user_id"),
             inverseJoinColumns = @JoinColumn(name = "role_id"))
-    private Set<Role> roles;
+    private Set<Role> roles = new java.util.HashSet<>();
 }

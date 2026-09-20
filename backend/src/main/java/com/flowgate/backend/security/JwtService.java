@@ -52,11 +52,15 @@ public class JwtService {
     }
 
     private Claims parseClaims(String token) {
-        return Jwts.parser()
-                .verifyWith(getSigningKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        try {
+            return Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (Exception ex) {
+            throw new IllegalArgumentException("Invalid or expired JWT", ex);
+        }
     }
 
     private SecretKey getSigningKey() {

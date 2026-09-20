@@ -20,7 +20,8 @@ public interface RequestService {
 
     // additional CRUD
     List<RequestDto> listAllRequests();
-    RequestDto updateRequest(UUID requestId, CreateRequestRequest request);
+    RequestDto updateRequest(UUID requestId, UUID actorId, CreateRequestRequest request);
+    RequestDto cancelRequest(UUID requestId, UUID actorId, String comment);
     void deleteRequest(UUID requestId);
 
     // history: requests where the user acted (approved/rejected/submitted)

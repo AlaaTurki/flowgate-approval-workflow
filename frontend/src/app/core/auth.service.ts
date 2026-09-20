@@ -2,6 +2,7 @@ import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, catchError, tap, throwError } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface AuthResponse {
   accessToken: string;
@@ -18,7 +19,7 @@ export class AuthService {
 
   login(username: string, password: string) {
     return this.http
-      .post<AuthResponse>('http://localhost:9090/api/auth/login', {
+      .post<AuthResponse>(`${environment.apiUrl}/api/auth/login`, {
         username,
         password,
       })
@@ -37,7 +38,7 @@ export class AuthService {
 
   register(username: string, email: string, fullName: string, password: string) {
     return this.http
-      .post('http://localhost:9090/api/auth/register', {
+      .post(`${environment.apiUrl}/api/auth/register`, {
         username,
         email,
         fullName,
@@ -66,6 +67,24 @@ export class AuthService {
 
   isAuthenticated(): boolean {
     return !!this.getToken();
+  }
+
+  hasValidToken(): boolean {
+    const token = this.getToken();
+    if (!token) {
+      return false;
+    }
+
+    try {
+      const payload = token.split('.')[1];
+      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+      const decoded = JSON.parse(atob(normalized));
+      const exp = Number(decoded.exp ?? 0);
+      return Number.isFinite(exp) && exp * 1000 > Date.now();
+    } catch {
+      this.clearSession();
+      return false;
+    }
   }
 
   getUsername(): string {

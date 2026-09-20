@@ -6,6 +6,7 @@ import com.flowgate.backend.user.repository.RoleRepository;
 import com.flowgate.backend.user.repository.UserRepository;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
@@ -14,6 +15,7 @@ import java.util.HashSet;
 import java.util.UUID;
 
 @Component
+@Profile({"dev", "default"})
 public class StartupDataLoader implements ApplicationRunner {
 
     private final RoleRepository roleRepository;

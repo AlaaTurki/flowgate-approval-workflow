@@ -37,10 +37,12 @@ public class Request {
     @Column(columnDefinition = "text", nullable = false)
     private String description;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private RequestStatus status = RequestStatus.DRAFT;
 
+    @Builder.Default
     @Column(name = "current_step_index", nullable = false)
     private int currentStepIndex = 0;
 
@@ -55,6 +57,14 @@ public class Request {
 
     @Column(name = "last_comment", columnDefinition = "text")
     private String lastComment;
+
+    @Version
+    @Column(nullable = false)
+    private Long version;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "workflow_id")
+    private Workflow workflow;
 
     @OneToMany(mappedBy = "request", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("createdAt ASC")

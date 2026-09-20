@@ -56,6 +56,7 @@ public class RequestServiceImpl implements RequestService {
         Request newRequest = Request.builder()
                 .requestType(requestType)
                 .submittedBy(employee)
+                .workflow(workflow)
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .status(RequestStatus.SUBMITTED)
@@ -141,9 +142,18 @@ public class RequestServiceImpl implements RequestService {
 
     @Override
     @Transactional
-    public RequestDto updateRequest(UUID requestId, CreateRequestRequest request) {
+    public RequestDto updateRequest(UUID requestId, UUID actorId, CreateRequestRequest request) {
         Request existing = requestRepository.findById(requestId)
                 .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+
+        User actor = userRepository.findById(actorId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        boolean isOwner = existing.getSubmittedBy() != null && existing.getSubmittedBy().getId().equals(actorId);
+        boolean isAdmin = actor.getRoles() != null && actor.getRoles().stream().anyMatch(r -> "ROLE_ADMIN".equalsIgnoreCase(r.getName()));
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("Only the owner or admin may update this request");
+        }
 
         if (existing.getStatus() == RequestStatus.APPROVED || existing.getStatus() == RequestStatus.REJECTED || existing.getStatus() == RequestStatus.CANCELLED) {
             throw new IllegalStateException("Cannot modify a closed request");
@@ -154,6 +164,39 @@ public class RequestServiceImpl implements RequestService {
         existing.setUpdatedAt(OffsetDateTime.now());
 
         return toDto(requestRepository.save(existing));
+    }
+
+    @Override
+    @Transactional
+    public RequestDto cancelRequest(UUID requestId, UUID actorId, String comment) {
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+
+        User actor = userRepository.findById(actorId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+
+        if (request.getStatus() == RequestStatus.APPROVED || request.getStatus() == RequestStatus.REJECTED || request.getStatus() == RequestStatus.CANCELLED) {
+            throw new IllegalStateException("This request is already closed");
+        }
+
+        boolean isOwner = request.getSubmittedBy() != null && request.getSubmittedBy().getId().equals(actorId);
+        boolean isAdmin = actor.getRoles() != null && actor.getRoles().stream().anyMatch(r -> "ROLE_ADMIN".equalsIgnoreCase(r.getName()));
+        if (!isOwner && !isAdmin) {
+            throw new AccessDeniedException("Only the request owner or an admin can cancel this request");
+        }
+
+        request.setStatus(RequestStatus.CANCELLED);
+        request.setResolvedAt(OffsetDateTime.now());
+        request.setUpdatedAt(OffsetDateTime.now());
+        request.setLastComment(comment == null || comment.isBlank() ? "Cancelled by requester" : comment);
+        request.getActions().add(ApprovalAction.builder()
+                .request(request)
+                .actor(actor)
+                .actionType(ApprovalActionType.REJECTED)
+                .comment(request.getLastComment())
+                .createdAt(OffsetDateTime.now())
+                .build());
+        return toDto(requestRepository.save(request));
     }
 
     @Override
@@ -173,8 +216,14 @@ public class RequestServiceImpl implements RequestService {
         User actor = userRepository.findById(actorId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
-        Workflow workflow = workflowRepository.findFirstByRequestTypeIdAndActiveTrue(request.getRequestType().getId())
-                .orElseThrow(() -> new IllegalArgumentException("No workflow configured for the request type"));
+        if (request.getSubmittedBy() != null && request.getSubmittedBy().getId().equals(actorId)) {
+            throw new AccessDeniedException("A user cannot approve or reject their own request");
+        }
+
+        Workflow workflow = request.getWorkflow();
+        if (workflow == null || workflow.getSteps() == null || workflow.getSteps().isEmpty()) {
+            throw new IllegalStateException("Request is not attached to a valid workflow snapshot");
+        }
 
         List<WorkflowStep> steps = workflow.getSteps().stream()
                 .sorted(Comparator.comparingInt(WorkflowStep::getOrderIndex))
@@ -189,12 +238,15 @@ public class RequestServiceImpl implements RequestService {
             throw new AccessDeniedException("Only the current approval step can act on this request");
         }
 
+        if (step.isRequiresComment() && (comment == null || comment.isBlank())) {
+            throw new IllegalArgumentException("A comment is required for this approval step");
+        }
         if (rejection && (comment == null || comment.isBlank())) {
             throw new IllegalArgumentException("A rejection comment is required");
         }
 
         if (actionType == ApprovalActionType.APPROVED) {
-            if (comment != null && !comment.isBlank() && step.isRequiresComment()) {
+            if (comment != null && !comment.isBlank()) {
                 request.setLastComment(comment);
             }
             if (request.getCurrentStepIndex() == steps.size() - 1) {
@@ -207,7 +259,7 @@ public class RequestServiceImpl implements RequestService {
         } else {
             request.setStatus(RequestStatus.REJECTED);
             request.setResolvedAt(OffsetDateTime.now());
-            request.setLastComment(comment);
+            request.setLastComment(comment == null ? "Rejected" : comment);
         }
 
         request.setUpdatedAt(OffsetDateTime.now());
@@ -223,8 +275,7 @@ public class RequestServiceImpl implements RequestService {
     }
 
     private boolean canAct(User actor, Request request) {
-        Workflow workflow = workflowRepository.findFirstByRequestTypeIdAndActiveTrue(request.getRequestType().getId())
-                .orElse(null);
+        Workflow workflow = request.getWorkflow();
         if (workflow == null || workflow.getSteps() == null || workflow.getSteps().isEmpty()) {
             return false;
         }
@@ -240,20 +291,22 @@ public class RequestServiceImpl implements RequestService {
     }
 
     private boolean canAct(User actor, WorkflowStep step) {
-        if (actor == null || actor.getRoles() == null) {
+        if (actor == null || step == null) {
             return false;
         }
 
-        boolean hasRequiredRole = actor.getRoles().stream()
+        if (step.getApproverUserId() != null) {
+            return step.getApproverUserId().equals(actor.getId());
+        }
+
+        if (actor.getRoles() == null) {
+            return false;
+        }
+
+        return actor.getRoles().stream()
                 .map(Role::getName)
                 .anyMatch(roleName -> roleName.equalsIgnoreCase(step.getApproverRole())
                         || roleName.equalsIgnoreCase("ROLE_ADMIN"));
-
-        if (step.getApproverUserId() != null) {
-            return step.getApproverUserId().equals(actor.getId()) || hasRequiredRole;
-        }
-
-        return hasRequiredRole;
     }
 
     @Override
@@ -288,25 +341,28 @@ public class RequestServiceImpl implements RequestService {
         }
 
         // filter by date range (createdAt)
-        java.time.OffsetDateTime fromDt = null, toDt = null;
+        final java.time.OffsetDateTime[] range = new java.time.OffsetDateTime[2];
         try {
             if (from != null && !from.isBlank()) {
                 java.time.LocalDate ld = java.time.LocalDate.parse(from);
-                fromDt = ld.atStartOfDay().atOffset(java.time.ZoneOffset.UTC);
+                range[0] = ld.atStartOfDay().atOffset(java.time.ZoneOffset.UTC);
             }
             if (to != null && !to.isBlank()) {
                 java.time.LocalDate ld2 = java.time.LocalDate.parse(to);
-                toDt = ld2.plusDays(1).atStartOfDay().atOffset(java.time.ZoneOffset.UTC).minusNanos(1);
+                range[1] = ld2.plusDays(1).atStartOfDay().atOffset(java.time.ZoneOffset.UTC).minusNanos(1);
             }
         } catch (java.time.format.DateTimeParseException e) {
             // ignore invalid dates
         }
 
-        if (fromDt != null) stream = stream.filter(r -> r.getCreatedAt() != null && !r.getCreatedAt().isBefore(fromDt));
-        if (toDt != null) stream = stream.filter(r -> r.getCreatedAt() != null && !r.getCreatedAt().isAfter(toDt));
+        if (range[0] != null) stream = stream.filter(r -> r.getCreatedAt() != null && !r.getCreatedAt().isBefore(range[0]));
+        if (range[1] != null) stream = stream.filter(r -> r.getCreatedAt() != null && !r.getCreatedAt().isAfter(range[1]));
 
         // sorting
-        stream = stream.sorted(Comparator.comparing(Request::getUpdatedAt).reversed());
+        stream = stream.sorted(Comparator.comparing(
+                request -> request.getUpdatedAt() != null ? request.getUpdatedAt() : request.getCreatedAt(),
+                Comparator.nullsLast(Comparator.reverseOrder())
+        ));
 
         // pagination
         int p = (page != null && page >= 0) ? page : 0;
@@ -342,7 +398,7 @@ public class RequestServiceImpl implements RequestService {
                     if (request.getCreatedAt() == null || request.getResolvedAt() == null) {
                         return 0d;
                     }
-                    return Duration.between(request.getCreatedAt().toInstant(), request.getResolvedAt().toInstant()).toDays();
+                    return Duration.between(request.getCreatedAt().toInstant(), request.getResolvedAt().toInstant()).toHours() / 24.0;
                 })
                 .average()
                 .orElse(0d);
