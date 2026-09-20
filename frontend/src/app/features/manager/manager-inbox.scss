@@ -194,6 +194,19 @@ button {
 .priority.high { background: rgba(248, 113, 113, 0.16); color: #fca5a5; }
 .priority.normal { background: rgba(96, 165, 250, 0.14); color: #bfdbfe; }
 
+.status-badge {
+  display:inline-block;
+  padding:0.25rem 0.5rem;
+  border-radius:8px;
+  font-weight:600;
+  font-size:0.85rem;
+  background: rgba(148,163,184,0.06);
+  color:#cbd5e1;
+}
+.status-badge.approved { background: rgba(16,185,129,0.15); color:#bbf7d0; }
+.status-badge.rejected { background: rgba(239,68,68,0.12); color:#fecaca; }
+.status-badge.large { padding:0.5rem 0.8rem; border-radius:12px; font-size:0.95rem; }
+
 .meta-row {
   display: flex;
   flex-wrap: wrap;

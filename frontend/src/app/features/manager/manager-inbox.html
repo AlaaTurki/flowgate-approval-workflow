@@ -72,6 +72,7 @@
               <span>Employee: {{ item.employee }}</span>
               <span>Type: {{ item.type }}</span>
               <span>Amount: {{ item.amount }}</span>
+              <span>Approver: {{ item.approverLabel || '—' }}</span>
               <span>Due: {{ item.due }}</span>
             </div>
 
@@ -88,9 +89,32 @@
             <button class="mini-btn" type="button" (click)="closeDetail()">Close</button>
           </div>
           <div *ngIf="selectedDetail; else loading">
-            <p class="muted">{{ selectedDetail.requestTypeName }}</p>
-            <h4>{{ selectedDetail.title }}</h4>
-            <p>{{ selectedDetail.description }}</p>
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+              <div>
+                <p class="muted">{{ selectedDetail.requestTypeName }}</p>
+                <h4 style="margin:0.25rem 0 0;">{{ selectedDetail.title }}</h4>
+              </div>
+              <div style="text-align:right;">
+                <div><small class="muted">Status</small></div>
+                <div style="margin-top:0.3rem;"><span class="status-badge large" [class.approved]="selectedDetail.status === 'APPROVED'" [class.rejected]="selectedDetail.status === 'REJECTED'">{{ selectedDetail.status }}</span></div>
+              </div>
+            </div>
+
+            <div style="display:flex;justify-content:space-between;gap:0.6rem;margin-bottom:0.6rem;">
+              <div>
+                <small class="muted">Submitted by</small>
+                <div>{{ selectedDetail.submittedByUsername || '—' }}</div>
+                <small class="muted">Submitted</small>
+                <div>{{ selectedDetail.createdAt | date:'short' }}</div>
+              </div>
+              <div style="text-align:right;">
+                <small class="muted">Amount</small>
+                <div style="font-weight:700">{{ selectedDetail.amount != null ? ('$' + (selectedDetail.amount | number:'1.2-2')) : '—' }}</div>
+                <small class="muted">Current step</small>
+                <div>Step {{ selectedDetail.currentStepIndex + 1 }}</div>
+              </div>
+            </div>
+
             <div class="timeline">
               <div class="timeline-item" *ngFor="let action of selectedDetail.actions">
                 <strong>{{ action.actionType }}</strong>
@@ -98,6 +122,12 @@
                 <p>{{ action.comment || 'No comment' }}</p>
               </div>
             </div>
+
+            <div style="display:flex;gap:0.6rem;justify-content:flex-end;margin-top:0.8rem;">
+                          <button class="approve" type="button" (click)="approveById(selectedDetail.id)">Approve</button>
+                          <button class="reject" type="button" (click)="rejectById(selectedDetail.id)">Reject</button>
+            </div>
+
           </div>
           <ng-template #loading>
             <p class="empty-state">Loading...</p>
@@ -172,26 +202,33 @@
       </div>
 
       <div class="panel">
-        <table class="users-table">
+        <table class="history-table">
           <thead>
             <tr>
-              <th>Request</th>
+              <th style="width:40%">Request</th>
               <th>Type</th>
               <th>Status</th>
               <th>Updated</th>
               <th>Last comment</th>
+              <th style="width:100px">Amount</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let h of history">
-              <td>{{ h.title }}</td>
+            <tr *ngFor="let h of history" (click)="viewDetail(h.id)" class="history-row">
+              <td>
+                <div style="display:flex;flex-direction:column;gap:0.15rem;">
+                  <strong>{{ h.title }}</strong>
+                  <small class="muted">Submitted by: {{ h.submittedByUsername || '—' }}</small>
+                </div>
+              </td>
               <td>{{ h.requestTypeName }}</td>
-              <td>{{ h.status }}</td>
+              <td><span class="status-badge" [class.approved]="h.status === 'APPROVED'" [class.rejected]="h.status === 'REJECTED'">{{ h.status }}</span></td>
               <td>{{ h.updatedAt | date: 'short' }}</td>
-              <td>{{ h.lastComment }}</td>
+              <td>{{ h.lastComment || '—' }}</td>
+              <td style="text-align:right">{{ h.amount != null ? ('$' + (h.amount | number:'1.2-2')) : '—' }}</td>
             </tr>
             <tr *ngIf="!history.length">
-              <td colspan="5" class="empty-state">No approval history yet.</td>
+              <td colspan="6" class="empty-state">No approval history yet.</td>
             </tr>
           </tbody>
         </table>

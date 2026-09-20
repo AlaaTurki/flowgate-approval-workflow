@@ -59,6 +59,7 @@ public class RequestServiceImpl implements RequestService {
                 .workflow(workflow)
                 .title(request.getTitle())
                 .description(request.getDescription())
+                .amount(request.getAmount())
                 .status(RequestStatus.SUBMITTED)
                 .currentStepIndex(0)
                 .createdAt(OffsetDateTime.now())
@@ -161,6 +162,7 @@ public class RequestServiceImpl implements RequestService {
 
         existing.setTitle(request.getTitle());
         existing.setDescription(request.getDescription());
+        existing.setAmount(request.getAmount());
         existing.setUpdatedAt(OffsetDateTime.now());
 
         return toDto(requestRepository.save(existing));
@@ -303,10 +305,19 @@ public class RequestServiceImpl implements RequestService {
             return false;
         }
 
+        // Normalize role names to handle stored values with or without the "ROLE_" prefix
+        String stepRole = step.getApproverRole();
+        String normalizedStep = stepRole == null ? null : (stepRole.startsWith("ROLE_") ? stepRole.substring(5) : stepRole);
+
         return actor.getRoles().stream()
                 .map(Role::getName)
-                .anyMatch(roleName -> roleName.equalsIgnoreCase(step.getApproverRole())
-                        || roleName.equalsIgnoreCase("ROLE_ADMIN"));
+                .anyMatch(roleName -> {
+                    if (roleName == null) return false;
+                    if ("ROLE_ADMIN".equalsIgnoreCase(roleName)) return true; // admin is wildcard
+                    String normalizedActor = roleName.startsWith("ROLE_") ? roleName.substring(5) : roleName;
+                    if (normalizedStep == null) return false;
+                    return normalizedActor.equalsIgnoreCase(normalizedStep);
+                });
     }
 
     @Override
@@ -413,6 +424,23 @@ public class RequestServiceImpl implements RequestService {
     }
 
     private RequestDto toDto(Request request) {
+        // determine current approver info if possible
+        String approverRole = null;
+        java.util.UUID approverUserId = null;
+        String approverUsername = null;
+        Workflow wf = request.getWorkflow();
+        if (wf != null && wf.getSteps() != null && request.getCurrentStepIndex() >= 0 && request.getCurrentStepIndex() < wf.getSteps().size()) {
+            java.util.List<WorkflowStep> steps = wf.getSteps().stream().sorted(java.util.Comparator.comparingInt(WorkflowStep::getOrderIndex)).toList();
+            if (request.getCurrentStepIndex() < steps.size()) {
+                WorkflowStep step = steps.get(request.getCurrentStepIndex());
+                approverRole = step.getApproverRole();
+                approverUserId = step.getApproverUserId();
+                if (approverUserId != null) {
+                    approverUsername = userRepository.findById(approverUserId).map(User::getUsername).orElse(null);
+                }
+            }
+        }
+
         return RequestDto.builder()
                 .id(request.getId())
                 .requestTypeId(request.getRequestType() != null ? request.getRequestType().getId() : null)
@@ -423,10 +451,14 @@ public class RequestServiceImpl implements RequestService {
                 .description(request.getDescription())
                 .status(request.getStatus())
                 .currentStepIndex(request.getCurrentStepIndex())
+                .currentApproverRole(approverRole)
+                .currentApproverUserId(approverUserId)
+                .currentApproverUsername(approverUsername)
                 .createdAt(request.getCreatedAt())
                 .updatedAt(request.getUpdatedAt())
                 .resolvedAt(request.getResolvedAt())
                 .lastComment(request.getLastComment())
+                .amount(request.getAmount())
                 .build();
     }
 
@@ -445,6 +477,10 @@ public class RequestServiceImpl implements RequestService {
                 .updatedAt(request.getUpdatedAt())
                 .resolvedAt(request.getResolvedAt())
                 .lastComment(request.getLastComment())
+                .amount(request.getAmount())
+                .currentApproverRole(approverRole)
+                .currentApproverUserId(approverUserId)
+                .currentApproverUsername(approverUsername)
                 .actions(request.getActions() == null ? List.of() : request.getActions().stream()
                         .sorted(Comparator.comparing(ApprovalAction::getCreatedAt))
                         .map(action -> ApprovalActionDto.builder()

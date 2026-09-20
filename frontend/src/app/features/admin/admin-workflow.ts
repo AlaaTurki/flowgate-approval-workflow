@@ -24,6 +24,7 @@ export class AdminWorkflowComponent implements OnInit {
     steps: FormArray<FormGroup<{
       name: FormControl<string>;
       approver: FormControl<string>;
+      approverUserId: FormControl<string>;
       requiredComment: FormControl<boolean>;
     }>>;
   }>;
@@ -46,13 +47,15 @@ export class AdminWorkflowComponent implements OnInit {
         this.fb.nonNullable.group({
           name: ['Manager approval', Validators.required],
           approver: ['ROLE_MANAGER', Validators.required],
-          requiredComment: [true],
-        }),
-        this.fb.nonNullable.group({
-          name: ['Finance review', Validators.required],
-          approver: ['ROLE_ADMIN', Validators.required],
-          requiredComment: [true],
-        }),
+      approverUserId: [''],
+      requiredComment: [true],
+    }),
+    this.fb.nonNullable.group({
+      name: ['Finance review', Validators.required],
+      approver: ['ROLE_ADMIN', Validators.required],
+      approverUserId: [''],
+      requiredComment: [true],
+    }),
       ]),
     });
     this.userForm = this.fb.nonNullable.group({
@@ -85,7 +88,7 @@ export class AdminWorkflowComponent implements OnInit {
       typeName: '',
       description: '',
       steps: [
-        { name: 'Manager approval', approver: 'ROLE_MANAGER', requiredComment: true },
+        { name: 'Manager approval', approver: 'ROLE_MANAGER', approverUserId: '', requiredComment: true },
       ],
     });
     this.activeNav = 'Workflow builder';
@@ -216,9 +219,10 @@ export class AdminWorkflowComponent implements OnInit {
       this.fb.nonNullable.group({
         name: ['', Validators.required],
         approver: ['ROLE_MANAGER', Validators.required],
-        requiredComment: [false],
-      }),
-    );
+      approverUserId: [''],
+      requiredComment: [false],
+    }),
+  );
   }
 
   removeStep(index: number): void {
@@ -236,7 +240,7 @@ export class AdminWorkflowComponent implements OnInit {
     const value = this.form.getRawValue() as {
       typeName: string;
       description: string;
-      steps: Array<{ name: string; approver: string; requiredComment: boolean }>;
+      steps: Array<{ name: string; approver: string; approverUserId?: string | null; requiredComment: boolean }>;
     };
 
     this.api.createRequestType({ name: value.typeName, description: value.description }).subscribe({
@@ -247,6 +251,7 @@ export class AdminWorkflowComponent implements OnInit {
             name: step.name,
             orderIndex: index,
             approverRole: step.approver,
+            approverUserId: step.approverUserId ? step.approverUserId : null,
             requiresComment: step.requiredComment,
           })),
         };
@@ -261,7 +266,7 @@ export class AdminWorkflowComponent implements OnInit {
               typeName: '',
               description: '',
               steps: [
-                { name: 'Manager approval', approver: 'ROLE_MANAGER', requiredComment: true },
+                { name: 'Manager approval', approver: 'ROLE_MANAGER', approverUserId: '', requiredComment: true },
               ],
             });
           },

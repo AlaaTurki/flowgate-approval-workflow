@@ -9,6 +9,7 @@ interface EmployeeRequest {
  title: string;
  type: string;
  amount: string;
+ approver?: string;
  status: 'Draft' | 'In review' | 'Approved' | 'Rejected';
  submitted: string;
  rawId?: string;
@@ -110,9 +111,10 @@ export class EmployeeDashboardComponent implements OnInit {
      return;
    }
 
-   const { title, requestTypeId, description } = this.form.getRawValue() as {
+   const { title, requestTypeId, amount, description } = this.form.getRawValue() as {
      title: string;
      requestTypeId: string;
+     amount: string;
      description: string;
    };
 
@@ -123,7 +125,7 @@ export class EmployeeDashboardComponent implements OnInit {
 
    this.isLoading = true;
    if (this.editingId) {
-     this.api.updateRequest(this.editingId, { requestTypeId, title, description }).subscribe({
+     this.api.updateRequest(this.editingId, { requestTypeId, title, description, amount: Number(amount) }).subscribe({
        next: () => {
          this.editingId = null;
          this.form.reset({
@@ -144,7 +146,7 @@ export class EmployeeDashboardComponent implements OnInit {
      return;
    }
 
-   this.api.createRequest({ requestTypeId, title, description }).subscribe({
+   this.api.createRequest({ requestTypeId, title, description, amount: Number(amount) }).subscribe({
      next: () => {
        this.form.reset({
          title: '',
@@ -238,7 +240,8 @@ export class EmployeeDashboardComponent implements OnInit {
      rawId: item.id,
      title: item.title,
      type: item.requestTypeName,
-     amount: '$0.00',
+     amount: item.amount != null ? `$${Number(item.amount).toFixed(2)}` : '$0.00',
+     approver: item.currentApproverUsername ? item.currentApproverUsername : (item.currentApproverRole ?? '—'),
      status: this.toStatusLabel(item.status),
      submitted: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'Recently',
    };

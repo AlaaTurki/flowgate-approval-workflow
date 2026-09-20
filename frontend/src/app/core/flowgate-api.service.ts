@@ -47,10 +47,14 @@ export interface RequestDto {
   description: string;
   status: 'DRAFT' | 'SUBMITTED' | 'IN_REVIEW' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
   currentStepIndex: number;
+  currentApproverRole?: string | null;
+  currentApproverUserId?: string | null;
+  currentApproverUsername?: string | null;
   createdAt?: string;
   updatedAt?: string;
   resolvedAt?: string;
   lastComment?: string;
+  amount?: number;
 }
 
 export interface ApprovalActionDto {
@@ -77,6 +81,7 @@ export interface CreateRequestPayload {
   requestTypeId: string;
   title: string;
   description: string;
+  amount?: number;
 }
 
 export interface CreateWorkflowPayload {

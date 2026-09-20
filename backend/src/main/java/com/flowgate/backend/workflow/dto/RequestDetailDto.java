@@ -24,9 +24,13 @@ public class RequestDetailDto {
     private String description;
     private RequestStatus status;
     private int currentStepIndex;
+    private String currentApproverRole;
+    private java.util.UUID currentApproverUserId;
+    private String currentApproverUsername;
     private OffsetDateTime createdAt;
     private OffsetDateTime updatedAt;
     private OffsetDateTime resolvedAt;
     private String lastComment;
+    private java.math.BigDecimal amount;
     private List<ApprovalActionDto> actions;
 }

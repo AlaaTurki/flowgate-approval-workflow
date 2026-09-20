@@ -10,6 +10,7 @@ interface ApprovalItem {
   request: string;
   type: string;
   amount: string;
+  approverLabel?: string;
   priority: 'High' | 'Normal';
   due: string;
 }
@@ -144,6 +145,20 @@ export class ManagerInboxComponent implements OnInit {
    });
   }
 
+  approveById(id: string): void {
+   const comment = window.prompt('Approval comment (optional)', 'Approved');
+   if (!id) return;
+   this.api.approveRequest(id, comment ?? '').subscribe({
+     next: () => {
+       this.loadQueue();
+       this.loadDashboardStats();
+       this.loadHistory();
+       this.viewDetail(id);
+     },
+     error: () => console.error('Unable to approve this request.'),
+   });
+  }
+
   reject(item: ApprovalItem): void {
    const comment = window.prompt('Reason for rejection', 'Please review the details and resubmit.');
    if (!comment || !comment.trim()) {
@@ -156,6 +171,24 @@ export class ManagerInboxComponent implements OnInit {
        this.loadQueue();
        this.loadDashboardStats();
        this.loadHistory();
+     },
+     error: () => console.error('Unable to reject this request.'),
+   });
+  }
+
+  rejectById(id: string): void {
+   const comment = window.prompt('Reason for rejection', 'Please review the details and resubmit.');
+   if (!comment || !comment.trim()) {
+     console.warn('A rejection comment is required.');
+     return;
+   }
+   if (!id) return;
+   this.api.rejectRequest(id, comment).subscribe({
+     next: () => {
+       this.loadQueue();
+       this.loadDashboardStats();
+       this.loadHistory();
+       this.viewDetail(id);
      },
      error: () => console.error('Unable to reject this request.'),
    });
@@ -187,7 +220,8 @@ export class ManagerInboxComponent implements OnInit {
          employee: item.submittedByUsername ?? 'Employee',
          request: item.title,
          type: item.requestTypeName,
-         amount: '$0.00',
+         amount: item.amount != null ? `$${Number(item.amount).toFixed(2)}` : '$0.00',
+         approverLabel: item.currentApproverUsername ? item.currentApproverUsername : (item.currentApproverRole ?? '—'),
          priority: 'Normal',
          due: item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : 'Today',
        }));

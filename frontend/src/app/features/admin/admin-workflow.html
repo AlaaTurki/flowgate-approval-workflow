@@ -73,6 +73,14 @@
                 </select>
               </label>
 
+              <label>
+               Approver user (optional)
+               <select formControlName="approverUserId">
+                 <option value="">— use role —</option>
+                 <option *ngFor="let u of users" [value]="u.id">{{u.username}} ({{u.fullName || u.email}})</option>
+               </select>
+              </label>
+
               <label class="checkbox-row">
                 <input type="checkbox" formControlName="requiredComment" />
                 Requires comment
@@ -148,7 +156,7 @@
             <tr *ngFor="let user of users">
               <td>
                 <div style="display:flex;align-items:center;gap:0.6rem;">
-                  <div class="avatar">{{ user.username?.charAt(0)?.toUpperCase() }}</div>
+                  <div class="avatar">{{ (user.username || '').charAt(0).toUpperCase() }}</div>
                   <div style="display:flex;flex-direction:column;">
                     <strong>{{ user.username }}</strong>
                     <small class="muted">{{ user.createdAt ? (user.createdAt | date:'short') : '' }}</small>

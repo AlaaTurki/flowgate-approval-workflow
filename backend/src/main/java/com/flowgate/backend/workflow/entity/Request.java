@@ -34,6 +34,9 @@ public class Request {
     @Column(nullable = false)
     private String title;
 
+    @Column(precision = 12, scale = 2)
+    private java.math.BigDecimal amount;
+
     @Column(columnDefinition = "text", nullable = false)
     private String description;
 

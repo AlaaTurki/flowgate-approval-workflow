@@ -21,6 +21,8 @@ public class CreateRequestRequest {
     @NotBlank
     private String title;
 
+    private java.math.BigDecimal amount;
+
     @NotBlank
     private String description;
 }
