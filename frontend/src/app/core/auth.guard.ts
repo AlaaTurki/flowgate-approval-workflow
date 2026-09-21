@@ -13,7 +13,7 @@ export const authGuard: CanActivateFn = () => {
   return authService.hasValidToken() ? true : router.createUrlTree(['/login']);
 };
 
-export const roleGuard = (expectedRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE'): CanActivateFn => {
+export const roleGuard = (...expectedRoles: Array<'ADMIN' | 'MANAGER' | 'EMPLOYEE'>): CanActivateFn => {
   return () => {
     const authService = inject(AuthService);
     const router = inject(Router);
@@ -24,7 +24,12 @@ export const roleGuard = (expectedRole: 'ADMIN' | 'MANAGER' | 'EMPLOYEE'): CanAc
     }
 
     const currentRole = authService.getCurrentRole();
-    const allows = expectedRole === 'ADMIN' ? currentRole === 'ADMIN' : expectedRole === 'MANAGER' ? currentRole === 'MANAGER' || currentRole === 'ADMIN' : currentRole === 'EMPLOYEE' || currentRole === 'MANAGER' || currentRole === 'ADMIN';
+    const allows = expectedRoles.some((role) => {
+      if (role === 'ADMIN') return currentRole === 'ADMIN';
+      if (role === 'MANAGER') return currentRole === 'MANAGER' || currentRole === 'ADMIN';
+      return currentRole === 'EMPLOYEE' || currentRole === 'MANAGER' || currentRole === 'ADMIN';
+    });
+
     return allows ? true : router.createUrlTree([authService.getDashboardRoute()]);
   };
 };

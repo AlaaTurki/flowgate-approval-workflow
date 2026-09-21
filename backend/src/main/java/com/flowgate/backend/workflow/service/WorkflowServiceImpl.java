@@ -1,5 +1,9 @@
 package com.flowgate.backend.workflow.service;
 
+import com.flowgate.backend.common.exception.ConflictException;
+import com.flowgate.backend.common.exception.InvalidStateException;
+import com.flowgate.backend.common.exception.NotFoundException;
+import com.flowgate.backend.user.repository.RoleRepository;
 import com.flowgate.backend.workflow.dto.CreateRequestTypeRequest;
 import com.flowgate.backend.workflow.dto.CreateWorkflowRequest;
 import com.flowgate.backend.workflow.dto.CreateWorkflowStepRequest;
@@ -9,6 +13,7 @@ import com.flowgate.backend.workflow.dto.WorkflowStepDto;
 import com.flowgate.backend.workflow.entity.RequestType;
 import com.flowgate.backend.workflow.entity.Workflow;
 import com.flowgate.backend.workflow.entity.WorkflowStep;
+import com.flowgate.backend.workflow.repository.RequestRepository;
 import com.flowgate.backend.workflow.repository.RequestTypeRepository;
 import com.flowgate.backend.workflow.repository.WorkflowRepository;
 import org.springframework.stereotype.Service;
@@ -25,10 +30,14 @@ public class WorkflowServiceImpl implements WorkflowService {
 
     private final RequestTypeRepository requestTypeRepository;
     private final WorkflowRepository workflowRepository;
+    private final RoleRepository roleRepository;
+    private final RequestRepository requestRepository;
 
-    public WorkflowServiceImpl(RequestTypeRepository requestTypeRepository, WorkflowRepository workflowRepository) {
+    public WorkflowServiceImpl(RequestTypeRepository requestTypeRepository, WorkflowRepository workflowRepository, RoleRepository roleRepository, RequestRepository requestRepository) {
         this.requestTypeRepository = requestTypeRepository;
         this.workflowRepository = workflowRepository;
+        this.roleRepository = roleRepository;
+        this.requestRepository = requestRepository;
     }
 
     @Override
@@ -61,10 +70,27 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Transactional
     public WorkflowDto createWorkflow(UUID requestTypeId, CreateWorkflowRequest request) {
         RequestType requestType = requestTypeRepository.findById(requestTypeId)
-                .orElseThrow(() -> new IllegalArgumentException("Request type not found"));
+                .orElseThrow(() -> new NotFoundException("Request type not found"));
 
         if (request.getSteps() == null || request.getSteps().isEmpty()) {
-            throw new IllegalArgumentException("A workflow requires at least one approval step");
+            throw new InvalidStateException("A workflow requires at least one approval step");
+        }
+
+        List<CreateWorkflowStepRequest> sortedSteps = request.getSteps().stream()
+                .sorted(Comparator.comparingInt(CreateWorkflowStepRequest::getOrderIndex))
+                .toList();
+
+        for (int i = 0; i < sortedSteps.size(); i++) {
+            CreateWorkflowStepRequest stepRequest = sortedSteps.get(i);
+            if (stepRequest.getOrderIndex() != i) {
+                throw new InvalidStateException("Workflow step order indices must be contiguous starting at 0");
+            }
+            if (stepRequest.getApproverRole() != null && !stepRequest.getApproverRole().isBlank()) {
+                String normalized = stepRequest.getApproverRole().trim();
+                if (!roleRepository.findByName(normalized.startsWith("ROLE_") ? normalized : "ROLE_" + normalized).isPresent()) {
+                    throw new InvalidStateException("approverRole must reference an existing role: " + stepRequest.getApproverRole());
+                }
+            }
         }
 
         List<Workflow> existing = workflowRepository.findByRequestTypeIdAndActiveTrue(requestTypeId);
@@ -79,8 +105,7 @@ public class WorkflowServiceImpl implements WorkflowService {
                 .createdAt(OffsetDateTime.now())
                 .build();
 
-        List<WorkflowStep> steps = request.getSteps().stream()
-                .sorted(Comparator.comparingInt(CreateWorkflowStepRequest::getOrderIndex))
+        List<WorkflowStep> steps = sortedSteps.stream()
                 .map(stepRequest -> WorkflowStep.builder()
                         .workflow(workflow)
                         .name(stepRequest.getName())
@@ -138,11 +163,10 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Transactional
     public void deleteRequestType(UUID id) {
         RequestType type = requestTypeRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Request type not found"));
-        // remove related workflows first
-        List<Workflow> workflows = workflowRepository.findByRequestTypeId(id);
-        if (workflows != null && !workflows.isEmpty()) {
-            workflowRepository.deleteAll(workflows);
+                .orElseThrow(() -> new NotFoundException("Request type not found"));
+        long requestCount = requestRepository.countByRequestType(type);
+        if (requestCount > 0) {
+            throw new ConflictException("Request type has requests; deactivate it instead");
         }
         requestTypeRepository.delete(type);
     }
@@ -150,7 +174,14 @@ public class WorkflowServiceImpl implements WorkflowService {
     @Override
     @Transactional
     public void deleteWorkflow(UUID workflowId) {
-        workflowRepository.deleteById(workflowId);
+        Workflow workflow = workflowRepository.findById(workflowId)
+                .orElseThrow(() -> new NotFoundException("Workflow not found"));
+        long requestCount = requestRepository.countByWorkflow(workflow);
+        if (requestCount > 0) {
+            workflow.setActive(false);
+            return;
+        }
+        workflowRepository.delete(workflow);
     }
 
     private RequestTypeDto toDto(RequestType requestType) {

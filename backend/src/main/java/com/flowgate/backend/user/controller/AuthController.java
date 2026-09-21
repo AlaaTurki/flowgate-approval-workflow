@@ -9,6 +9,7 @@ import com.flowgate.backend.user.entity.User;
 import com.flowgate.backend.user.repository.UserRepository;
 import com.flowgate.backend.user.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -25,17 +26,26 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final boolean registrationEnabled;
 
     @Autowired
-    public AuthController(UserService userService, UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
+    public AuthController(UserService userService,
+                         UserRepository userRepository,
+                         PasswordEncoder passwordEncoder,
+                         JwtService jwtService,
+                         @Value("${app.registration.enabled:false}") boolean registrationEnabled) {
         this.userService = userService;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
+        this.registrationEnabled = registrationEnabled;
     }
 
     @PostMapping("/register")
     public ResponseEntity<UserDto> register(@Validated @RequestBody RegisterRequest req) {
+        if (!registrationEnabled) {
+            throw new IllegalArgumentException("Self-registration is disabled");
+        }
         UserDto created = userService.register(req);
         return ResponseEntity.ok(created);
     }

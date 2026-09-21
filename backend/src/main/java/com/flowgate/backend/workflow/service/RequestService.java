@@ -13,6 +13,7 @@ public interface RequestService {
     List<RequestDto> listRequestsForUser(UUID userId);
     List<RequestDto> listRequestsForApproval(UUID approverId);
     RequestDetailDto getRequestDetail(UUID requestId);
+    RequestDetailDto getRequestDetail(UUID requestId, UUID actorId);
     RequestDto getRequest(UUID requestId);
     RequestDto approveRequest(UUID requestId, UUID actorId, String comment);
     RequestDto rejectRequest(UUID requestId, UUID actorId, String comment);

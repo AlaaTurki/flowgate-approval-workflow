@@ -1,7 +1,6 @@
 package com.flowgate.backend.workflow.controller;
 
-import com.flowgate.backend.user.entity.User;
-import com.flowgate.backend.user.repository.UserRepository;
+import com.flowgate.backend.security.AuthenticatedUser;
 import com.flowgate.backend.workflow.dto.ApprovalDecisionRequest;
 import com.flowgate.backend.workflow.dto.CreateRequestRequest;
 import com.flowgate.backend.workflow.dto.DashboardStatsDto;
@@ -13,7 +12,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,43 +23,36 @@ import java.util.UUID;
 public class RequestController {
 
     private final RequestService requestService;
-    private final UserRepository userRepository;
 
-    public RequestController(RequestService requestService, UserRepository userRepository) {
+    public RequestController(RequestService requestService) {
         this.requestService = requestService;
-        this.userRepository = userRepository;
     }
 
     @PostMapping
     @PreAuthorize("hasRole('EMPLOYEE')")
     public ResponseEntity<RequestDto> createRequest(@Valid @RequestBody CreateRequestRequest request,
-                                                  @AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                                                 @AuthenticationPrincipal AuthenticatedUser currentUser) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(requestService.createRequest(currentUser.getId(), request));
     }
 
     @GetMapping("/mine")
     @PreAuthorize("hasRole('EMPLOYEE')")
-    public List<RequestDto> myRequests(@AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    public List<RequestDto> myRequests(@AuthenticationPrincipal AuthenticatedUser currentUser) {
         return requestService.listRequestsForUser(currentUser.getId());
     }
 
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public List<RequestDto> pendingApprovals(@AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    public List<RequestDto> pendingApprovals(@AuthenticationPrincipal AuthenticatedUser currentUser) {
         return requestService.listRequestsForApproval(currentUser.getId());
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
-    public RequestDetailDto getRequest(@PathVariable UUID id) {
-        return requestService.getRequestDetail(id);
+    public RequestDetailDto getRequest(@PathVariable UUID id,
+                                      @AuthenticationPrincipal AuthenticatedUser currentUser) {
+        return requestService.getRequestDetail(id, currentUser.getId());
     }
 
     @GetMapping
@@ -73,10 +64,8 @@ public class RequestController {
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<RequestDto> updateRequest(@PathVariable UUID id,
-                                                     @Valid @RequestBody CreateRequestRequest requestBody,
-                                                     @AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                                                 @Valid @RequestBody CreateRequestRequest requestBody,
+                                                 @AuthenticationPrincipal AuthenticatedUser currentUser) {
         RequestDto updated = requestService.updateRequest(id, currentUser.getId(), requestBody);
         return ResponseEntity.ok(updated);
     }
@@ -85,32 +74,26 @@ public class RequestController {
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'ADMIN')")
     public ResponseEntity<RequestDto> cancelRequest(@PathVariable UUID id,
                                                   @RequestBody(required = false) Map<String, String> payload,
-                                                  @AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                                                  @AuthenticationPrincipal AuthenticatedUser currentUser) {
         String comment = payload != null ? payload.getOrDefault("comment", "Cancelled") : "Cancelled";
         return ResponseEntity.ok(requestService.cancelRequest(id, currentUser.getId(), comment));
     }
 
     @GetMapping("/dashboard")
     @PreAuthorize("hasAnyRole('EMPLOYEE', 'MANAGER', 'ADMIN')")
-    public DashboardStatsDto getDashboardStats(@AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    public DashboardStatsDto getDashboardStats(@AuthenticationPrincipal AuthenticatedUser currentUser) {
         return requestService.getDashboardStats(currentUser.getId());
     }
 
     @GetMapping("/history")
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
-    public List<RequestDto> getHistory(@AuthenticationPrincipal UserDetails userDetails,
-                                       @RequestParam(required = false) String requestTypeId,
-                                       @RequestParam(required = false) String status,
-                                       @RequestParam(required = false) String from,
-                                       @RequestParam(required = false) String to,
-                                       @RequestParam(required = false, defaultValue = "0") Integer page,
-                                       @RequestParam(required = false, defaultValue = "20") Integer size) {
-        User currentUser = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+    public List<RequestDto> getHistory(@AuthenticationPrincipal AuthenticatedUser currentUser,
+                                     @RequestParam(required = false) String requestTypeId,
+                                     @RequestParam(required = false) String status,
+                                     @RequestParam(required = false) String from,
+                                     @RequestParam(required = false) String to,
+                                     @RequestParam(required = false, defaultValue = "0") Integer page,
+                                     @RequestParam(required = false, defaultValue = "20") Integer size) {
         return requestService.getHistoryForUser(currentUser.getId(), requestTypeId, status, from, to, page, size);
     }
 
@@ -118,9 +101,7 @@ public class RequestController {
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public RequestDto approve(@PathVariable UUID id,
                              @Valid @RequestBody ApprovalDecisionRequest request,
-                             @AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                             @AuthenticationPrincipal AuthenticatedUser currentUser) {
         return requestService.approveRequest(id, currentUser.getId(), request.getComment());
     }
 
@@ -128,9 +109,7 @@ public class RequestController {
     @PreAuthorize("hasAnyRole('MANAGER', 'ADMIN')")
     public RequestDto reject(@PathVariable UUID id,
                              @Valid @RequestBody ApprovalDecisionRequest request,
-                             @AuthenticationPrincipal UserDetails userDetails) {
-        User currentUser = userRepository.findByUsername(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                             @AuthenticationPrincipal AuthenticatedUser currentUser) {
         return requestService.rejectRequest(id, currentUser.getId(), request.getComment());
     }
 }

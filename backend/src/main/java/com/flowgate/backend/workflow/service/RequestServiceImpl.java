@@ -1,5 +1,9 @@
 package com.flowgate.backend.workflow.service;
 
+import com.flowgate.backend.common.exception.ForbiddenException;
+import com.flowgate.backend.common.exception.InvalidStateException;
+import com.flowgate.backend.common.exception.NotFoundException;
+import com.flowgate.backend.common.exception.OptimisticLockException;
 import com.flowgate.backend.user.entity.Role;
 import com.flowgate.backend.user.entity.User;
 import com.flowgate.backend.user.repository.UserRepository;
@@ -8,6 +12,7 @@ import com.flowgate.backend.workflow.entity.*;
 import com.flowgate.backend.workflow.repository.RequestRepository;
 import com.flowgate.backend.workflow.repository.RequestTypeRepository;
 import com.flowgate.backend.workflow.repository.WorkflowRepository;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +21,7 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -41,16 +47,16 @@ public class RequestServiceImpl implements RequestService {
     @Transactional
     public RequestDto createRequest(UUID employeeId, CreateRequestRequest request) {
         User employee = userRepository.findById(employeeId)
-                .orElseThrow(() -> new IllegalArgumentException("Employee not found"));
+                .orElseThrow(() -> new NotFoundException("Employee not found"));
 
         RequestType requestType = requestTypeRepository.findById(request.getRequestTypeId())
-                .orElseThrow(() -> new IllegalArgumentException("Request type not found"));
+                .orElseThrow(() -> new NotFoundException("Request type not found"));
 
         Workflow workflow = workflowRepository.findFirstByRequestTypeIdAndActiveTrue(requestType.getId())
-                .orElseThrow(() -> new IllegalArgumentException("No active workflow configured for this request type"));
+                .orElseThrow(() -> new NotFoundException("No active workflow configured for this request type"));
 
         if (workflow.getSteps() == null || workflow.getSteps().isEmpty()) {
-            throw new IllegalArgumentException("Workflow has no approval steps configured");
+            throw new InvalidStateException("Workflow has no approval steps configured");
         }
 
         Request newRequest = Request.builder()
@@ -60,7 +66,7 @@ public class RequestServiceImpl implements RequestService {
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .amount(request.getAmount())
-                .status(RequestStatus.SUBMITTED)
+                .status(RequestStatus.IN_REVIEW)
                 .currentStepIndex(0)
                 .createdAt(OffsetDateTime.now())
                 .updatedAt(OffsetDateTime.now())
@@ -69,14 +75,13 @@ public class RequestServiceImpl implements RequestService {
         ApprovalAction action = ApprovalAction.builder()
                 .request(newRequest)
                 .actor(employee)
+                .step(getStepAt(newRequest.getWorkflow(), 0))
                 .actionType(ApprovalActionType.SUBMITTED)
                 .comment("Request submitted")
                 .createdAt(OffsetDateTime.now())
                 .build();
 
         newRequest.getActions().add(action);
-        newRequest.setStatus(RequestStatus.IN_REVIEW);
-
         return toDto(requestRepository.save(newRequest));
     }
 
@@ -84,7 +89,7 @@ public class RequestServiceImpl implements RequestService {
     @Transactional(readOnly = true)
     public List<RequestDto> listRequestsForUser(UUID userId) {
         User worker = userRepository.findById(userId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         return requestRepository.findBySubmittedBy(worker).stream()
                 .sorted(Comparator.comparing(Request::getCreatedAt).reversed())
@@ -96,10 +101,11 @@ public class RequestServiceImpl implements RequestService {
     @Transactional(readOnly = true)
     public List<RequestDto> listRequestsForApproval(UUID approverId) {
         User approver = userRepository.findById(approverId)
-                .orElseThrow(() -> new IllegalArgumentException("Approver not found"));
+                .orElseThrow(() -> new NotFoundException("Approver not found"));
 
         return requestRepository.findByStatus(RequestStatus.IN_REVIEW).stream()
                 .filter(request -> canAct(approver, request))
+                .filter(request -> request.getSubmittedBy() != null && !request.getSubmittedBy().getId().equals(approverId))
                 .sorted(Comparator.comparing(Request::getUpdatedAt).reversed())
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -109,7 +115,31 @@ public class RequestServiceImpl implements RequestService {
     @Transactional(readOnly = true)
     public RequestDetailDto getRequestDetail(UUID requestId) {
         Request request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+                .orElseThrow(() -> new NotFoundException("Request not found"));
+        return toDetailDto(request);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public RequestDetailDto getRequestDetail(UUID requestId, UUID actorId) {
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new NotFoundException("Request not found"));
+        User actor = userRepository.findById(actorId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        boolean isSubmitter = request.getSubmittedBy() != null && request.getSubmittedBy().getId().equals(actorId);
+        boolean isAdmin = isAdmin(actor);
+        boolean isWorkflowActor = request.getWorkflow() != null && request.getWorkflow().getSteps() != null && request.getWorkflow().getSteps().stream()
+                .anyMatch(step -> step != null && step.getApproverUserId() != null && step.getApproverUserId().equals(actorId)
+                        || step != null && actor.getRoles() != null && step.getApproverRole() != null && actor.getRoles().stream()
+                        .map(Role::getName)
+                        .filter(Objects::nonNull)
+                        .map(r -> r.trim())
+                        .map(r -> r.startsWith("ROLE_") ? r.substring(5) : r)
+                        .anyMatch(r -> r.equalsIgnoreCase(step.getApproverRole().trim().replaceFirst("^ROLE_", ""))));
+        if (!isSubmitter && !isAdmin && !isWorkflowActor) {
+            throw new ForbiddenException("You are not allowed to view this request");
+        }
         return toDetailDto(request);
     }
 
@@ -145,19 +175,22 @@ public class RequestServiceImpl implements RequestService {
     @Transactional
     public RequestDto updateRequest(UUID requestId, UUID actorId, CreateRequestRequest request) {
         Request existing = requestRepository.findById(requestId)
-                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+                .orElseThrow(() -> new NotFoundException("Request not found"));
 
         User actor = userRepository.findById(actorId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         boolean isOwner = existing.getSubmittedBy() != null && existing.getSubmittedBy().getId().equals(actorId);
-        boolean isAdmin = actor.getRoles() != null && actor.getRoles().stream().anyMatch(r -> "ROLE_ADMIN".equalsIgnoreCase(r.getName()));
+        boolean isAdmin = isAdmin(actor);
         if (!isOwner && !isAdmin) {
-            throw new AccessDeniedException("Only the owner or admin may update this request");
+            throw new ForbiddenException("Only the owner or admin may update this request");
         }
 
-        if (existing.getStatus() == RequestStatus.APPROVED || existing.getStatus() == RequestStatus.REJECTED || existing.getStatus() == RequestStatus.CANCELLED) {
-            throw new IllegalStateException("Cannot modify a closed request");
+        if (existing.getStatus() != RequestStatus.IN_REVIEW) {
+            throw new InvalidStateException("Cannot modify a request that is not in review");
+        }
+        if (existing.getCurrentStepIndex() != 0) {
+            throw new InvalidStateException("Only the initial step can be edited");
         }
 
         existing.setTitle(request.getTitle());
@@ -165,26 +198,30 @@ public class RequestServiceImpl implements RequestService {
         existing.setAmount(request.getAmount());
         existing.setUpdatedAt(OffsetDateTime.now());
 
-        return toDto(requestRepository.save(existing));
+        try {
+            return toDto(requestRepository.save(existing));
+        } catch (OptimisticLockingFailureException ex) {
+            throw new OptimisticLockException("request was modified, reload");
+        }
     }
 
     @Override
     @Transactional
     public RequestDto cancelRequest(UUID requestId, UUID actorId, String comment) {
         Request request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+                .orElseThrow(() -> new NotFoundException("Request not found"));
 
         User actor = userRepository.findById(actorId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
-        if (request.getStatus() == RequestStatus.APPROVED || request.getStatus() == RequestStatus.REJECTED || request.getStatus() == RequestStatus.CANCELLED) {
-            throw new IllegalStateException("This request is already closed");
+        if (request.getStatus() != RequestStatus.IN_REVIEW) {
+            throw new InvalidStateException("Only an in-review request can be cancelled");
         }
 
         boolean isOwner = request.getSubmittedBy() != null && request.getSubmittedBy().getId().equals(actorId);
-        boolean isAdmin = actor.getRoles() != null && actor.getRoles().stream().anyMatch(r -> "ROLE_ADMIN".equalsIgnoreCase(r.getName()));
+        boolean isAdmin = isAdmin(actor);
         if (!isOwner && !isAdmin) {
-            throw new AccessDeniedException("Only the request owner or an admin can cancel this request");
+            throw new ForbiddenException("Only the request owner or an admin can cancel this request");
         }
 
         request.setStatus(RequestStatus.CANCELLED);
@@ -194,37 +231,44 @@ public class RequestServiceImpl implements RequestService {
         request.getActions().add(ApprovalAction.builder()
                 .request(request)
                 .actor(actor)
-                .actionType(ApprovalActionType.REJECTED)
+                .step(getCurrentStep(request))
+                .actionType(ApprovalActionType.CANCELLED)
                 .comment(request.getLastComment())
                 .createdAt(OffsetDateTime.now())
                 .build());
-        return toDto(requestRepository.save(request));
+        try {
+            return toDto(requestRepository.save(request));
+        } catch (OptimisticLockingFailureException ex) {
+            throw new OptimisticLockException("request was modified, reload");
+        }
     }
 
     @Override
     @Transactional
     public void deleteRequest(UUID requestId) {
-        requestRepository.deleteById(requestId);
+        Request request = requestRepository.findById(requestId)
+                .orElseThrow(() -> new NotFoundException("Request not found"));
+        throw new InvalidStateException("Requests are never hard-deleted; use cancel instead");
     }
 
     private RequestDto processDecision(UUID requestId, UUID actorId, String comment, ApprovalActionType actionType, boolean rejection) {
         Request request = requestRepository.findById(requestId)
-                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+                .orElseThrow(() -> new NotFoundException("Request not found"));
 
-        if (request.getStatus() == RequestStatus.APPROVED || request.getStatus() == RequestStatus.REJECTED || request.getStatus() == RequestStatus.CANCELLED) {
-            throw new IllegalStateException("This request is already closed");
+        if (request.getStatus() != RequestStatus.IN_REVIEW) {
+            throw new InvalidStateException("This request is not in review");
         }
 
         User actor = userRepository.findById(actorId)
-                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (request.getSubmittedBy() != null && request.getSubmittedBy().getId().equals(actorId)) {
-            throw new AccessDeniedException("A user cannot approve or reject their own request");
+            throw new ForbiddenException("A user cannot approve or reject their own request");
         }
 
         Workflow workflow = request.getWorkflow();
         if (workflow == null || workflow.getSteps() == null || workflow.getSteps().isEmpty()) {
-            throw new IllegalStateException("Request is not attached to a valid workflow snapshot");
+            throw new InvalidStateException("Request is not attached to a valid workflow snapshot");
         }
 
         List<WorkflowStep> steps = workflow.getSteps().stream()
@@ -232,15 +276,15 @@ public class RequestServiceImpl implements RequestService {
                 .toList();
 
         if (request.getCurrentStepIndex() >= steps.size()) {
-            throw new IllegalStateException("Request has already reached the end of the workflow");
+            throw new InvalidStateException("Request has already reached the end of the workflow");
         }
 
         WorkflowStep step = steps.get(request.getCurrentStepIndex());
-        if (!canAct(actor, step)) {
-            throw new AccessDeniedException("Only the current approval step can act on this request");
+        if (!canAct(actor, request)) {
+            throw new ForbiddenException("Only the current approval step can act on this request");
         }
 
-        if (step.isRequiresComment() && (comment == null || comment.isBlank())) {
+        if (step.isRequiresComment() && actionType == ApprovalActionType.APPROVED && (comment == null || comment.isBlank())) {
             throw new IllegalArgumentException("A comment is required for this approval step");
         }
         if (rejection && (comment == null || comment.isBlank())) {
@@ -268,15 +312,26 @@ public class RequestServiceImpl implements RequestService {
         request.getActions().add(ApprovalAction.builder()
                 .request(request)
                 .actor(actor)
+                .step(step)
                 .actionType(actionType)
                 .comment(comment)
                 .createdAt(OffsetDateTime.now())
                 .build());
 
-        return toDto(requestRepository.save(request));
+        try {
+            return toDto(requestRepository.save(request));
+        } catch (OptimisticLockingFailureException ex) {
+            throw new OptimisticLockException("request was modified, reload");
+        }
     }
 
     private boolean canAct(User actor, Request request) {
+        if (request == null || actor == null || request.getStatus() != RequestStatus.IN_REVIEW) {
+            return false;
+        }
+        if (request.getSubmittedBy() != null && request.getSubmittedBy().getId().equals(actor.getId())) {
+            return false;
+        }
         Workflow workflow = request.getWorkflow();
         if (workflow == null || workflow.getSteps() == null || workflow.getSteps().isEmpty()) {
             return false;
@@ -285,39 +340,61 @@ public class RequestServiceImpl implements RequestService {
                 .sorted(Comparator.comparingInt(WorkflowStep::getOrderIndex))
                 .toList();
 
-        if (request.getCurrentStepIndex() >= steps.size()) {
+        if (request.getCurrentStepIndex() < 0 || request.getCurrentStepIndex() >= steps.size()) {
             return false;
         }
 
-        return canAct(actor, steps.get(request.getCurrentStepIndex()));
-    }
-
-    private boolean canAct(User actor, WorkflowStep step) {
-        if (actor == null || step == null) {
-            return false;
+        WorkflowStep step = steps.get(request.getCurrentStepIndex());
+        if (isAdmin(actor)) {
+            return true;
         }
-
         if (step.getApproverUserId() != null) {
             return step.getApproverUserId().equals(actor.getId());
         }
-
-        if (actor.getRoles() == null) {
+        if (actor.getRoles() == null || step.getApproverRole() == null || step.getApproverRole().isBlank()) {
             return false;
         }
 
-        // Normalize role names to handle stored values with or without the "ROLE_" prefix
-        String stepRole = step.getApproverRole();
-        String normalizedStep = stepRole == null ? null : (stepRole.startsWith("ROLE_") ? stepRole.substring(5) : stepRole);
+        final String normalizedStep = step.getApproverRole().trim();
+        final String normalizedStepValue = normalizedStep.startsWith("ROLE_") ? normalizedStep.substring(5) : normalizedStep;
 
         return actor.getRoles().stream()
                 .map(Role::getName)
-                .anyMatch(roleName -> {
-                    if (roleName == null) return false;
-                    if ("ROLE_ADMIN".equalsIgnoreCase(roleName)) return true; // admin is wildcard
-                    String normalizedActor = roleName.startsWith("ROLE_") ? roleName.substring(5) : roleName;
-                    if (normalizedStep == null) return false;
-                    return normalizedActor.equalsIgnoreCase(normalizedStep);
-                });
+                .filter(Objects::nonNull)
+                .map(roleName -> roleName.trim())
+                .map(roleName -> roleName.startsWith("ROLE_") ? roleName.substring(5) : roleName)
+                .anyMatch(normalizedActor -> normalizedActor.equalsIgnoreCase(normalizedStepValue));
+    }
+
+    private boolean isAdmin(User actor) {
+        return actor != null && actor.getRoles() != null && actor.getRoles().stream()
+                .map(Role::getName)
+                .filter(Objects::nonNull)
+                .anyMatch(name -> "ROLE_ADMIN".equalsIgnoreCase(name.trim()));
+    }
+
+    private WorkflowStep getCurrentStep(Request request) {
+        if (request == null || request.getWorkflow() == null || request.getWorkflow().getSteps() == null) {
+            return null;
+        }
+        List<WorkflowStep> steps = request.getWorkflow().getSteps().stream()
+                .sorted(Comparator.comparingInt(WorkflowStep::getOrderIndex))
+                .toList();
+        if (request.getCurrentStepIndex() < 0 || request.getCurrentStepIndex() >= steps.size()) {
+            return null;
+        }
+        return steps.get(request.getCurrentStepIndex());
+    }
+
+    private WorkflowStep getStepAt(Workflow workflow, int index) {
+        if (workflow == null || workflow.getSteps() == null) {
+            return null;
+        }
+        return workflow.getSteps().stream()
+                .sorted(Comparator.comparingInt(WorkflowStep::getOrderIndex))
+                .skip(index)
+                .findFirst()
+                .orElse(null);
     }
 
     @Override
@@ -463,6 +540,22 @@ public class RequestServiceImpl implements RequestService {
     }
 
     private RequestDetailDto toDetailDto(Request request) {
+        String approverRole = null;
+        java.util.UUID approverUserId = null;
+        String approverUsername = null;
+        Workflow wf = request.getWorkflow();
+        if (wf != null && wf.getSteps() != null && request.getCurrentStepIndex() >= 0 && request.getCurrentStepIndex() < wf.getSteps().size()) {
+            List<WorkflowStep> steps = wf.getSteps().stream().sorted(Comparator.comparingInt(WorkflowStep::getOrderIndex)).toList();
+            if (request.getCurrentStepIndex() < steps.size()) {
+                WorkflowStep step = steps.get(request.getCurrentStepIndex());
+                approverRole = step.getApproverRole();
+                approverUserId = step.getApproverUserId();
+                if (approverUserId != null) {
+                    approverUsername = userRepository.findById(approverUserId).map(User::getUsername).orElse(null);
+                }
+            }
+        }
+
         return RequestDetailDto.builder()
                 .id(request.getId())
                 .requestTypeId(request.getRequestType() != null ? request.getRequestType().getId() : null)

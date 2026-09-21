@@ -221,7 +221,7 @@ export class ManagerInboxComponent implements OnInit {
          request: item.title,
          type: item.requestTypeName,
          amount: item.amount != null ? `$${Number(item.amount).toFixed(2)}` : '$0.00',
-         approverLabel: item.currentApproverUsername ? item.currentApproverUsername : (item.currentApproverRole ?? '—'),
+         approverLabel: this.getWaitingForLabel(item),
          priority: 'Normal',
          due: item.updatedAt ? new Date(item.updatedAt).toLocaleDateString() : 'Today',
        }));
@@ -245,5 +245,16 @@ export class ManagerInboxComponent implements OnInit {
        this.stats.avgSla = '0.0d';
      },
    });
+  }
+
+  private getWaitingForLabel(item: RequestDto): string {
+   if (!item.currentApproverRole && !item.currentApproverUsername) {
+     return '—';
+   }
+   const roleLabel = item.currentApproverRole ? item.currentApproverRole.replace(/^ROLE_/, '').toLowerCase() : 'role';
+   const roleText = roleLabel.charAt(0).toUpperCase() + roleLabel.slice(1);
+   return item.currentApproverUsername
+     ? `Waiting for: ${item.currentApproverUsername} (${roleText})`
+     : `Waiting for: ${roleText}`;
   }
 }

@@ -9,7 +9,7 @@ export const routes: Routes = [
   { path: 'login', component: LoginPageComponent },
   { path: 'register', component: LoginPageComponent },
   { path: 'employee', component: EmployeeDashboardComponent, canActivate: [authGuard] },
-  { path: 'manager', component: ManagerInboxComponent, canActivate: [roleGuard('MANAGER')] },
+  { path: 'manager', component: ManagerInboxComponent, canActivate: [roleGuard('MANAGER', 'ADMIN')] },
   { path: 'admin', component: AdminWorkflowComponent, canActivate: [roleGuard('ADMIN')] },
   { path: '', redirectTo: '/login', pathMatch: 'full' },
   { path: '**', redirectTo: '/login' },

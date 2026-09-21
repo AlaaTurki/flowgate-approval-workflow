@@ -15,7 +15,7 @@ import java.util.HashSet;
 import java.util.UUID;
 
 @Component
-@Profile({"dev", "default"})
+@Profile("dev")
 public class StartupDataLoader implements ApplicationRunner {
 
     private final RoleRepository roleRepository;

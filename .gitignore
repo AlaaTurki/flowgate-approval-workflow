@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+*.log
 
 dist/
 out/

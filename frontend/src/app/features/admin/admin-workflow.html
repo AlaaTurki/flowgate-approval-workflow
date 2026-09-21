@@ -11,6 +11,7 @@
     <nav class="nav-panel">
       <button class="nav-pill" [class.active]="activeNav === 'Workflow builder'" type="button" (click)="selectNav('Workflow builder')">Workflow builder</button>
       <button class="nav-pill" [class.active]="activeNav === 'Users'" type="button" (click)="selectNav('Users')">Users</button>
+      <button class="nav-pill" type="button" (click)="goToApprovals()">Approvals</button>
       <button class="nav-pill" [class.active]="activeNav === 'Policies'" type="button" (click)="selectNav('Policies')">Policies</button>
     </nav>
   </aside>
@@ -61,15 +62,14 @@
 
               <label>
                 Step name
-                <input formControlName="name" placeholder="Manager approval" />
+                <input formControlName="name" [placeholder]="getStepRoleLabel(step.get('approver')?.value || 'ROLE_MANAGER') + ' approval'" />
               </label>
 
               <label>
                 Approver role
-                <select formControlName="approver">
+                <select formControlName="approver" (change)="onApproverChange(i, $any($event.target).value)">
                   <option value="ROLE_MANAGER">Manager</option>
                   <option value="ROLE_ADMIN">Admin</option>
-                  <option value="ROLE_EMPLOYEE">Employee</option>
                 </select>
               </label>
 
@@ -109,7 +109,7 @@
           <article
             class="template-card"
             *ngFor="let template of workflowTemplates"
-            [class.is-open]="selectedWorkflowName === template.name"
+            [class.is-open]="selectedWorkflowId === template.id"
             (click)="handleDetails(template)"
             tabindex="0"
             (keydown.enter)="handleDetails(template)"
@@ -118,8 +118,13 @@
               <h3>{{ template.name }}</h3>
               <button type="button" class="mini-btn" (click)="$event.stopPropagation(); handleDetails(template)">Open</button>
             </div>
+            <div class="muted" *ngIf="template.requestTypeId">Request type: {{ template.requestTypeId }}</div>
             <ul>
-              <li *ngFor="let step of template.steps">{{ step }}</li>
+              <li *ngFor="let step of template.steps">
+                <strong>Step {{ step.order + 1 }}:</strong> {{ step.name }}
+                <span class="tag">{{ getStepRoleLabel(step.role) }}</span>
+                <span class="tag" *ngIf="step.requiresComment">Comment required</span>
+              </li>
             </ul>
           </article>
           <div class="empty-state" *ngIf="!workflowTemplates.length">

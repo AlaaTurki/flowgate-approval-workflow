@@ -1,12 +1,12 @@
 package com.flowgate.backend.user.dto;
 
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
+
+import java.util.List;
 
 @Data
 public class UpdateUserRequest {
-    @NotBlank
     private String username;
 
     @Email
@@ -14,4 +14,5 @@ public class UpdateUserRequest {
 
     private String fullName;
     private Boolean enabled;
+    private List<String> roles;
 }

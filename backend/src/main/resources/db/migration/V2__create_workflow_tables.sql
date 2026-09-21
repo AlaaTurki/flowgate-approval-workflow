@@ -30,19 +30,16 @@ CREATE TABLE IF NOT EXISTS requests (
     id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     request_type_id uuid NOT NULL,
     submitted_by_id uuid NOT NULL,
-    workflow_id uuid,
     title varchar(200) NOT NULL,
     description text NOT NULL,
-    status varchar(30) NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT','SUBMITTED','IN_REVIEW','APPROVED','REJECTED','CANCELLED')),
+    status varchar(30) NOT NULL DEFAULT 'DRAFT',
     current_step_index integer NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now(),
     resolved_at timestamptz,
     last_comment text,
-    version bigint NOT NULL DEFAULT 0,
     CONSTRAINT fk_request_type FOREIGN KEY (request_type_id) REFERENCES request_types (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_request_user FOREIGN KEY (submitted_by_id) REFERENCES users (id) ON DELETE RESTRICT,
-    CONSTRAINT fk_request_workflow FOREIGN KEY (workflow_id) REFERENCES workflows (id) ON DELETE RESTRICT
+    CONSTRAINT fk_request_user FOREIGN KEY (submitted_by_id) REFERENCES users (id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS approval_actions (
@@ -55,15 +52,6 @@ CREATE TABLE IF NOT EXISTS approval_actions (
     CONSTRAINT fk_approval_request FOREIGN KEY (request_id) REFERENCES requests (id) ON DELETE CASCADE,
     CONSTRAINT fk_approval_actor FOREIGN KEY (actor_id) REFERENCES users (id) ON DELETE RESTRICT
 );
-
-CREATE UNIQUE INDEX IF NOT EXISTS ux_workflow_steps_order
-    ON workflow_steps (workflow_id, order_index);
-
-CREATE INDEX IF NOT EXISTS ix_requests_submitted_by_status
-    ON requests (submitted_by_id, status);
-
-CREATE INDEX IF NOT EXISTS ix_approval_actions_request_id
-    ON approval_actions (request_id);
 
 INSERT INTO request_types (name, description, active)
 VALUES ('Expense Reimbursement', 'Travel and business expense reimbursement requests', true)

@@ -29,6 +29,10 @@ public class ApprovalAction {
     @JoinColumn(name = "actor_id", nullable = false)
     private User actor;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "step_id")
+    private WorkflowStep step;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ApprovalActionType actionType;

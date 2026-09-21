@@ -1,12 +1,23 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../../core/auth.service';
-import { CreateWorkflowPayload, FlowgateApiService, RequestTypeDto, UserDto } from '../../core/flowgate-api.service';
+import { CreateWorkflowPayload, FlowgateApiService, UserDto, WorkflowDto } from '../../core/flowgate-api.service';
+
+interface WorkflowStepSummary {
+  order: number;
+  name: string;
+  role: string;
+  approverUser?: string | null;
+  requiresComment: boolean;
+}
 
 interface WorkflowSummary {
+  id: string;
+  requestTypeId?: string | null;
   name: string;
-  steps: string[];
+  steps: WorkflowStepSummary[];
 }
 
 @Component({
@@ -32,12 +43,13 @@ export class AdminWorkflowComponent implements OnInit {
   activeNav = 'Workflow builder';
   workflowTemplates: WorkflowSummary[] = [];
   users: UserDto[] = [];
-  selectedWorkflowName: string | null = null;
+  selectedWorkflowId: string | null = null;
 
   constructor(
     private readonly fb: FormBuilder,
     private readonly authService: AuthService,
     private readonly api: FlowgateApiService,
+    private readonly router: Router,
   ) {
     this.username = this.authService.getUsername();
     this.form = this.fb.nonNullable.group({
@@ -45,17 +57,11 @@ export class AdminWorkflowComponent implements OnInit {
       description: [''],
       steps: this.fb.array([
         this.fb.nonNullable.group({
-          name: ['Manager approval', Validators.required],
+          name: ['', Validators.required],
           approver: ['ROLE_MANAGER', Validators.required],
-      approverUserId: [''],
-      requiredComment: [true],
-    }),
-    this.fb.nonNullable.group({
-      name: ['Finance review', Validators.required],
-      approver: ['ROLE_ADMIN', Validators.required],
-      approverUserId: [''],
-      requiredComment: [true],
-    }),
+          approverUserId: [''],
+          requiredComment: [false],
+        }),
       ]),
     });
     this.userForm = this.fb.nonNullable.group({
@@ -74,7 +80,7 @@ export class AdminWorkflowComponent implements OnInit {
   searchWorkflows(query: string | null | undefined): void {
     this.api.searchWorkflows(query ?? '').subscribe({
       next: (workflows) => {
-        this.workflowTemplates = workflows.map((w) => ({ name: w.name, steps: (w.steps || []).map((s) => s.name) }));
+        this.workflowTemplates = workflows.map((workflow) => this.mapWorkflow(workflow));
       },
       error: () => {
         this.workflowTemplates = [];
@@ -83,18 +89,15 @@ export class AdminWorkflowComponent implements OnInit {
   }
 
   createNewWorkflow(): void {
-    this.selectedWorkflowName = null;
+    this.selectedWorkflowId = null;
     this.form.reset({
       typeName: '',
       description: '',
-      steps: [
-        { name: 'Manager approval', approver: 'ROLE_MANAGER', approverUserId: '', requiredComment: true },
-      ],
+      steps: [{ name: '', approver: 'ROLE_MANAGER', approverUserId: '', requiredComment: false }],
     });
     this.activeNav = 'Workflow builder';
   }
 
-  // user modal state
   showUserModal = false;
   editingUser: UserDto | null = null;
   selectedRoles: string[] = [];
@@ -110,7 +113,6 @@ export class AdminWorkflowComponent implements OnInit {
   openEditUser(user: UserDto): void {
     this.editingUser = user;
     this.selectedRoles = (user as any).roles && Array.isArray((user as any).roles) ? (user as any).roles : ['ROLE_EMPLOYEE'];
-    // basic patch - allow changing full name and email and enabled status via form
     this.userForm.patchValue({ username: user.username, fullName: user.fullName ?? '', email: user.email ?? '', password: '' });
     this.showUserModal = true;
   }
@@ -126,9 +128,8 @@ export class AdminWorkflowComponent implements OnInit {
     }
 
     const data = this.userForm.getRawValue();
-    const payload: any = { username: data.username, fullName: data.fullName, email: data.email };
+    const payload: any = { username: data.username, fullName: data.fullName, email: data.email, roles: this.selectedRoles };
     if (!this.editingUser) payload.password = data.password || 'changeme';
-    payload.roles = this.selectedRoles;
 
     if (this.editingUser) {
       this.api.updateUser(this.editingUser.id, payload).subscribe({
@@ -177,8 +178,10 @@ export class AdminWorkflowComponent implements OnInit {
     });
   }
 
-  // lightweight stubs to extract roles from user DTO if present
-  
+  goToApprovals(): void {
+    this.router.navigateByUrl('/manager');
+  }
+
   selectNav(name: string): void {
     this.activeNav = name;
   }
@@ -189,11 +192,18 @@ export class AdminWorkflowComponent implements OnInit {
   }
 
   handleDetails(type: WorkflowSummary): void {
-    this.selectedWorkflowName = type.name;
+    this.selectedWorkflowId = type.id;
     this.form.patchValue({
       typeName: type.name,
-      description: type.steps.join(', '),
+      description: type.steps.map((step) => step.name).join(', '),
     });
+    const stepFormGroups = type.steps.map((step) => this.fb.nonNullable.group({
+      name: [step.name || '', Validators.required],
+      approver: [step.role || 'ROLE_MANAGER', Validators.required],
+      approverUserId: [step.approverUser ?? ''],
+      requiredComment: [step.requiresComment ?? false],
+    }));
+    this.form.setControl('steps', this.fb.array(stepFormGroups));
     this.activeNav = 'Workflow builder';
   }
 
@@ -219,15 +229,25 @@ export class AdminWorkflowComponent implements OnInit {
       this.fb.nonNullable.group({
         name: ['', Validators.required],
         approver: ['ROLE_MANAGER', Validators.required],
-      approverUserId: [''],
-      requiredComment: [false],
-    }),
-  );
+        approverUserId: [''],
+        requiredComment: [false],
+      }),
+    );
   }
 
   removeStep(index: number): void {
     if (this.steps.length > 1) {
       this.steps.removeAt(index);
+    }
+  }
+
+  onApproverChange(index: number, role: string): void {
+    const stepGroup = this.steps.at(index) as FormGroup;
+    const currentName = String(stepGroup.get('name')?.value ?? '').trim();
+    const roleName = this.getStepRoleLabel(role).trim();
+    const baseName = `${roleName} approval`;
+    if (!currentName || currentName === 'Manager approval' || currentName === 'Finance review' || currentName === 'Admin approval') {
+      stepGroup.patchValue({ name: baseName });
     }
   }
 
@@ -248,7 +268,7 @@ export class AdminWorkflowComponent implements OnInit {
         const workflowPayload: CreateWorkflowPayload = {
           name: `${value.typeName} flow`,
           steps: value.steps.map((step, index) => ({
-            name: step.name,
+            name: step.name || `${this.getStepRoleLabel(step.approver)} approval`,
             orderIndex: index,
             approverRole: step.approver,
             approverUserId: step.approverUserId ? step.approverUserId : null,
@@ -258,16 +278,11 @@ export class AdminWorkflowComponent implements OnInit {
 
         this.api.createWorkflow(requestType.id, workflowPayload).subscribe({
           next: () => {
-            this.workflowTemplates.unshift({
-              name: value.typeName,
-              steps: value.steps.map((step) => step.name),
-            });
+            this.loadRequestTypes();
             this.form.reset({
               typeName: '',
               description: '',
-              steps: [
-                { name: 'Manager approval', approver: 'ROLE_MANAGER', approverUserId: '', requiredComment: true },
-              ],
+              steps: [{ name: '', approver: 'ROLE_MANAGER', approverUserId: '', requiredComment: false }],
             });
           },
           error: () => window.alert('Request type was created, but the workflow could not be saved.'),
@@ -281,26 +296,28 @@ export class AdminWorkflowComponent implements OnInit {
     this.authService.logout();
   }
 
+  private mapWorkflow(workflow: WorkflowDto): WorkflowSummary {
+    return {
+      id: workflow.id,
+      requestTypeId: workflow.requestTypeId,
+      name: workflow.name,
+      steps: (workflow.steps ?? []).map((step, index) => ({
+        order: step.orderIndex ?? index,
+        name: step.name,
+        role: step.approverRole ?? 'ROLE_MANAGER',
+        approverUser: step.approverUserId ?? null,
+        requiresComment: !!step.requiresComment,
+      })),
+    };
+  }
+
   private loadRequestTypes(): void {
     this.api.searchWorkflows('').subscribe({
       next: (workflows) => {
-        this.workflowTemplates = workflows.map((workflow) => ({
-          name: workflow.name,
-          steps: (workflow.steps ?? []).map((step) => step.name),
-        }));
+        this.workflowTemplates = workflows.map((workflow) => this.mapWorkflow(workflow));
       },
       error: () => {
-        this.api.getRequestTypes().subscribe({
-          next: (types) => {
-            this.workflowTemplates = types.map((type) => ({
-              name: type.name,
-              steps: [type.description ?? 'Configured approval'],
-            }));
-          },
-          error: () => {
-            this.workflowTemplates = [];
-          },
-        });
+        this.workflowTemplates = [];
       },
     });
   }

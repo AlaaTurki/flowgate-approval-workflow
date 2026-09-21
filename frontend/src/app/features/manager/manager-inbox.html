@@ -72,7 +72,7 @@
               <span>Employee: {{ item.employee }}</span>
               <span>Type: {{ item.type }}</span>
               <span>Amount: {{ item.amount }}</span>
-              <span>Approver: {{ item.approverLabel || '—' }}</span>
+              <span>{{ item.approverLabel || 'Waiting for: —' }}</span>
               <span>Due: {{ item.due }}</span>
             </div>
 

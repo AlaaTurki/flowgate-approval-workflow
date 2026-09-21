@@ -14,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class JwtService {
@@ -24,6 +25,13 @@ public class JwtService {
     @Value("${jwt.expiration-ms:86400000}")
     private long expirationMs;
 
+    @jakarta.annotation.PostConstruct
+    public void validateSecret() {
+        if (secret == null || secret.isBlank() || secret.getBytes(StandardCharsets.UTF_8).length < 32) {
+            throw new IllegalStateException("jwt.secret must be set and at least 32 bytes long");
+        }
+    }
+
     public String generateToken(User user) {
         List<String> roles = user.getRoles() == null ? List.of() : user.getRoles().stream()
                 .map(Role::getName)
@@ -31,7 +39,8 @@ public class JwtService {
 
         return Jwts.builder()
                 .subject(user.getUsername())
-                .claims(Map.of("roles", roles))
+                .claim("userId", user.getId().toString())
+                .claim("roles", roles)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(getSigningKey(), Jwts.SIG.HS256)
@@ -40,6 +49,15 @@ public class JwtService {
 
     public String extractUsername(String token) {
         return parseClaims(token).getSubject();
+    }
+
+    public UUID extractUserId(String token) {
+        String id = parseClaims(token).get("userId", String.class);
+        return id == null ? null : UUID.fromString(id);
+    }
+
+    public List<String> extractRoles(String token) {
+        return parseClaims(token).get("roles", List.class);
     }
 
     public boolean isTokenValid(String token, UserDetails userDetails) {
