@@ -63,6 +63,16 @@ Local development helper files have been added to the repository.
 
 4. After backend and database are running, open OpenAPI docs at http://localhost:9090/swagger-ui.html once the app is started.
 
+Development note (JWT & dev profile)
+
+- For local IDE runs enable the dev profile so the app will load JWT_SECRET from a nearby .env/.env.example or auto-generate a temporary in-memory secret if none is found. Generated secrets are for dev only and are lost on restart.
+
+  * PowerShell (current shell):  $env:SPRING_PROFILES_ACTIVE='dev'; .\mvnw spring-boot:run
+  * Maven CLI:                    .\mvnw -Dspring-boot.run.profiles=dev spring-boot:run
+  * IntelliJ: Run → Edit Configurations → set SPRING_PROFILES_ACTIVE=dev (or add JWT_SECRET env var)
+
+- To use a persistent key locally, set JWT_SECRET in your environment or add it to a .env file. Do NOT use a persistent or weak secret in production.
+
 More detailed environment and JWT configuration will be added as services are implemented.
 
 ## Workflow Lifecycle
