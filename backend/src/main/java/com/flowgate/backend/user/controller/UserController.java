@@ -14,6 +14,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/users")
+@org.springframework.validation.annotation.Validated
 public class UserController {
 
     private final UserService userService;

@@ -46,7 +46,59 @@ public class GlobalExceptionHandler {
             IllegalArgumentException.class})
     public ResponseEntity<Object> handleBadRequest(Exception ex) {
         log.warn("Bad request: {}", ex.getMessage());
-        return build(HttpStatus.BAD_REQUEST, ex.getMessage() == null ? "Bad request" : ex.getMessage());
+
+        Map<String, String> fieldErrors = new HashMap<>();
+        String msg = "Bad request";
+
+        if (ex instanceof MethodArgumentTypeMismatchException) {
+            MethodArgumentTypeMismatchException matm = (MethodArgumentTypeMismatchException) ex;
+            String name = matm.getName();
+            fieldErrors.put(name, "Invalid value for parameter");
+            msg = "Invalid parameter";
+        } else if (ex instanceof MissingServletRequestParameterException) {
+            MissingServletRequestParameterException msrp = (MissingServletRequestParameterException) ex;
+            fieldErrors.put(msrp.getParameterName(), "Missing required parameter");
+            msg = "Missing parameter";
+        } else if (ex instanceof ConstraintViolationException) {
+            ConstraintViolationException cve = (ConstraintViolationException) ex;
+            cve.getConstraintViolations().forEach(cv -> {
+                String path = cv.getPropertyPath().toString();
+                fieldErrors.put(path, cv.getMessage());
+            });
+            msg = "Validation failed";
+        } else if (ex instanceof HttpMessageNotReadableException) {
+            msg = "Malformed JSON request";
+            Throwable cause = ex.getCause();
+            try {
+                if (cause != null && cause.getClass().getName().equals("com.fasterxml.jackson.databind.exc.InvalidFormatException")) {
+                    // reflectively extract path and target type
+                    com.fasterxml.jackson.databind.exc.InvalidFormatException ife = (com.fasterxml.jackson.databind.exc.InvalidFormatException) cause;
+                    String field = ife.getPath() != null && !ife.getPath().isEmpty() ? ife.getPath().get(0).getFieldName() : "body";
+                    Class<?> target = ife.getTargetType();
+                    String detail = "Invalid value";
+                    if (target != null && java.util.UUID.class.isAssignableFrom(target)) {
+                        detail = "Malformed UUID";
+                    } else if (target != null && target.isEnum()) {
+                        detail = "Unknown enum value";
+                    } else if (target != null && Number.class.isAssignableFrom(target)) {
+                        detail = "Invalid number format";
+                    }
+                    fieldErrors.put(field, detail);
+                }
+            } catch (Exception ignore) {
+                // fall through
+            }
+        } else if (ex instanceof IllegalArgumentException) {
+            fieldErrors.put("", ex.getMessage() == null ? "Invalid argument" : ex.getMessage());
+            msg = "Bad request";
+        }
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("timestamp", OffsetDateTime.now());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("message", msg);
+        body.put("errors", fieldErrors);
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
     }
 
     @ExceptionHandler(ForbiddenException.class)
@@ -103,6 +155,8 @@ public class GlobalExceptionHandler {
         body.put("timestamp", OffsetDateTime.now());
         body.put("status", status.value());
         body.put("message", message);
+        // always include errors map for consistency; field-level errors populate in handleValidation
+        body.put("errors", new HashMap<>());
         return new ResponseEntity<>(body, status);
     }
 }

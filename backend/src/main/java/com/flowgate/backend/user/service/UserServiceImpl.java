@@ -46,8 +46,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserDto register(RegisterRequest req) {
-        String username = req.getUsername() == null ? "" : req.getUsername().trim();
-        String email = req.getEmail() == null ? "" : req.getEmail().trim();
+        String username = req.getUsername() == null ? "" : req.getUsername().trim().toLowerCase(Locale.ROOT);
+        String email = req.getEmail() == null ? "" : req.getEmail().trim().toLowerCase(Locale.ROOT);
 
         if (userRepository.findByUsername(username).isPresent()) {
             throw new ConflictException("username already exists");
@@ -94,8 +94,8 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (dto.getUsername() != null && !dto.getUsername().isBlank()) {
-            String username = dto.getUsername().trim();
-            if (!username.equals(user.getUsername()) && userRepository.findByUsername(username).isPresent()) {
+            String username = dto.getUsername().trim().toLowerCase(Locale.ROOT);
+            if (!username.equalsIgnoreCase(user.getUsername()) && userRepository.findByUsername(username).isPresent()) {
                 throw new ConflictException("username already exists");
             }
             user.setUsername(username);
@@ -104,7 +104,7 @@ public class UserServiceImpl implements UserService {
             user.setFullName(dto.getFullName());
         }
         if (dto.getEmail() != null && !dto.getEmail().isBlank()) {
-            String email = dto.getEmail().trim();
+            String email = dto.getEmail().trim().toLowerCase(Locale.ROOT);
             if (!email.equalsIgnoreCase(user.getEmail()) && userRepository.findByEmail(email).isPresent()) {
                 throw new ConflictException("email already exists");
             }

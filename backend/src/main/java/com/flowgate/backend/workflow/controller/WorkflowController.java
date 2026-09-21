@@ -16,6 +16,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/workflows")
+@org.springframework.validation.annotation.Validated
 public class WorkflowController {
 
     private final WorkflowService workflowService;

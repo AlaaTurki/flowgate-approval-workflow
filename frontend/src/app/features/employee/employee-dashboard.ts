@@ -53,10 +53,10 @@ export class EmployeeDashboardComponent implements OnInit {
    this.username = this.authService.getUsername();
    this.role = this.authService.getCurrentRole();
    this.form = this.fb.nonNullable.group({
-     title: ['', Validators.required],
+     title: ['', [Validators.required, Validators.minLength(3), Validators.maxLength(150)]],
      requestTypeId: ['', Validators.required],
-     amount: ['250.00', Validators.required],
-     description: ['', Validators.required],
+     amount: ['250.00', [Validators.required, Validators.pattern(/^\d+(\.\d{1,2})?$/)]],
+     description: ['', [Validators.required, Validators.minLength(10), Validators.maxLength(2000)]],
    });
  }
 
@@ -138,8 +138,23 @@ export class EmployeeDashboardComponent implements OnInit {
          this.loadStats();
          this.isLoading = false;
        },
-       error: () => {
+       error: (err: any) => {
          this.isLoading = false;
+         try {
+           const body = err?.error;
+           if (body && body.errors) {
+             Object.keys(body.errors).forEach((field) => {
+               const msg = body.errors[field];
+               const control = this.form.get(field as any);
+               if (control) {
+                 control.setErrors({ server: msg });
+                 control.markAsTouched();
+               }
+             });
+             window.alert(body.message || 'Validation failed');
+             return;
+           }
+         } catch (e) {}
          window.alert('Unable to update the request.');
        },
      });
@@ -158,8 +173,29 @@ export class EmployeeDashboardComponent implements OnInit {
        this.loadStats();
        this.isLoading = false;
      },
-     error: () => {
+     error: (err: any) => {
        this.isLoading = false;
+       // If backend returned validation errors, attach them to form controls so the UI can show them
+       try {
+         const body = err?.error;
+         if (body && body.errors) {
+           Object.keys(body.errors).forEach((field) => {
+             const msg = body.errors[field];
+             // map backend field keys to form control names if necessary
+             const controlName = field === 'title' || field === 'description' || field === 'amount' || field === 'requestTypeId' ? field : field;
+             const control = this.form.get(controlName as any);
+             if (control) {
+               control.setErrors({ server: msg });
+               control.markAsTouched();
+             }
+           });
+           // show top-level message
+           window.alert(body.message || 'Validation failed');
+           return;
+         }
+       } catch (e) {
+         // ignore parsing errors
+       }
        window.alert('Unable to submit the request.');
      },
    });

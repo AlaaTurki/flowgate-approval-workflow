@@ -20,6 +20,7 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/requests")
+@org.springframework.validation.annotation.Validated
 public class RequestController {
 
     private final RequestService requestService;
